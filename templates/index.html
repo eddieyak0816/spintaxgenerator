@@ -39,7 +39,7 @@
                 <a class="nav-link {% if tab=='template' %}active{% endif %}" id="template-tab" data-bs-toggle="tab" href="#template" role="tab">Template</a>
             </li>
             <li class="nav-item" role="presentation">
-                <a class="nav-link {% if tab=='prompts' %}active{% endif %}" id="prompts-tab" data-bs-toggle="tab" href="#prompts" role="tab">Prompt Manager</a>
+                <a class="nav-link {% if tab=='prompts' %}active{% endif %}" id="prompts-tab" data-bs-toggle="tab" href="#prompts" role="tab">Template Manager</a>
             </li>
         </ul>
         <div class="tab-content">
@@ -83,7 +83,15 @@
                         <label class="form-label">Main Keyword</label>
                         <input type="text" class="form-control" name="main_keyword" value="{{ main_keyword }}" placeholder="e.g. Windows">
                     </div>
-                    <!-- Prompt selection removed from Template tab -->
+                    <div class="mb-3">
+                        <label class="form-label">Template List</label>
+                        <select class="form-select" name="selected_template" onchange="var f=this.form; var a=document.createElement('input'); a.type='hidden'; a.name='action'; a.value='load_template'; f.appendChild(a); f.submit(); f.removeChild(a);">
+                            <option value="">-- Select Template --</option>
+                            {% for name in prompts.keys() %}
+                            <option value="{{ name }}" {% if selected_template==name %}selected{% endif %}>{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Spintax Template (editable)</label>
                         <textarea class="form-control" name="template_text" rows="5">{{ template }}</textarea>
@@ -114,16 +122,16 @@
                     </div>
                 </form>
             </div>
-            <!-- Prompt Manager Tab -->
+            <!-- Template Manager Tab -->
             <div class="tab-pane fade {% if tab=='prompts' %}show active{% endif %}" id="prompts" role="tabpanel">
                 <form method="post" class="section">
                     <input type="hidden" name="tab" value="prompts">
                     <input type="hidden" name="variables_json" value='{{ variables|tojson }}'>
                     <div class="row mb-3">
                         <div class="col-md-4">
-                            <label class="form-label">Prompt List</label>
+                            <label class="form-label">Template List</label>
                             <select class="form-select" name="prompt_name" onchange="var f=this.form; var a=document.createElement('input'); a.type='hidden'; a.name='action'; a.value='load_prompt'; f.appendChild(a); f.submit(); f.removeChild(a);">
-                                <option value="">-- Select Prompt --</option>
+                                <option value="">-- Select Template --</option>
                                 {% for name in prompts.keys() %}
                                 <option value="{{ name }}" {% if prompt_name==name %}selected{% endif %}>{{ name }}</option>
                                 {% endfor %}
@@ -131,26 +139,17 @@
                             <!-- No hidden action field; JS sets action for dropdown only -->
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Prompt Name</label>
-                            <input type="text" class="form-control" name="new_prompt_name" placeholder="Enter new prompt name" value="{{ new_prompt_name if new_prompt_name is defined else '' }}">
+                            <label class="form-label">Template Name</label>
+                            <input type="text" class="form-control" name="new_prompt_name" placeholder="Enter new template name" value="{{ new_prompt_name if new_prompt_name is defined else '' }}">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Prompt Text</label>
+                            <label class="form-label">Template Text</label>
                             <textarea class="form-control" name="prompt_text" rows="5">{{ prompt_text }}</textarea>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <button type="submit" name="action" value="save_prompt" class="btn accent-btn">Save Prompt</button>
-                        <button type="submit" name="action" value="delete_prompt" class="btn btn-danger">Delete Prompt</button>
-                    </div>
-                    <!-- Debug block -->
-                    <div class="alert alert-info mt-3">
-                        <strong>Debug Info:</strong><br>
-                        prompt_name: {{ prompt_name }}<br>
-                        new_prompt_name: {{ new_prompt_name }}<br>
-                        prompt_text: {{ prompt_text }}<br>
-                        tab: {{ tab }}<br>
-                        action: {{ request.form.get('action', '') }}
+                        <button type="submit" name="action" value="save_prompt" class="btn accent-btn">Save Template</button>
+                        <button type="submit" name="action" value="delete_prompt" class="btn btn-danger">Delete Template</button>
                     </div>
                 </form>
             </div>

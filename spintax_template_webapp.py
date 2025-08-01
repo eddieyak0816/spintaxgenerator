@@ -23,6 +23,7 @@ def index():
     prompt_text = ''
     new_prompt_name = ''
     tab = request.form.get('tab') or request.args.get('tab', 'variables')
+    selected_template = ''
 
     # Debug: Print incoming form data and key variables
     if request.method == 'POST':
@@ -56,8 +57,16 @@ def index():
         else:
             variables = json.loads(request.form.get('variables_json', '{}'))
 
+        # Template Tab: Load template from dropdown
+        if action == 'load_template':
+            selected_template = request.form.get('selected_template', '').strip()
+            if selected_template in prompts:
+                template = prompts[selected_template]
+            else:
+                template = ''
+            tab = 'template'
         # Variables Tab
-        if action == 'add_variable':
+        elif action == 'add_variable':
             name = request.form.get('var_name', '').strip()
             cell = request.form.get('var_cell', '').strip()
             if name and cell:

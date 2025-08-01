@@ -15,36 +15,54 @@ def spintax_preview(template, variables, sample_values):
     return preview
 
 def generate_formula(template, variables, main_keyword):
-    found_vars = set(re.findall(r'\{\{(.*?)\}\}', template))
-    missing = found_vars - set(variables.keys())
-    if 'main_keyword' in found_vars and 'main_keyword' not in variables:
-        missing = missing - {'main_keyword'}
-    if missing:
-        return None, f"The template uses variables you did not define: {', '.join(missing)}"
-    # Build the formula by splitting the template into text and variable/cell parts
+    # Find all {{variable}} and direct cell references (A1, B1, etc.)
+    cell_ref_pattern = re.compile(r'\b([A-Za-z]+[0-9]+)\b')
+    var_pattern = re.compile(r'\{\{(.*?)\}\}')
     parts = []
-    pattern = re.compile(r'\{\{(.*?)\}\}')
     last = 0
-    cell_ref_pattern = re.compile(r'^[A-Za-z]+[0-9]+$')
-    for m in pattern.finditer(template):
-        if m.start() > last:
-            # Add preceding text
-            parts.append('"' + template[last:m.start()].replace('"', '""') + '"')
-        var = m.group(1)
-        if var == 'main_keyword' and main_keyword:
-            parts.append('"' + main_keyword.replace('"', '""') + '"')
-        elif var in variables:
-            cell = str(variables[var])
-            # If the variable value looks like a cell reference, use it directly (no quotes)
-            if cell_ref_pattern.match(cell):
-                parts.append(cell)
+    matches = []
+    # Find all matches (variables and cell refs)
+    for m in var_pattern.finditer(template):
+        matches.append((m.start(), m.end(), 'var', m.group(1)))
+    for m in cell_ref_pattern.finditer(template):
+        # Only add cell refs not inside {{ }}
+        inside_var = False
+        for vstart, vend, _, _ in matches:
+            if m.start() >= vstart and m.end() <= vend:
+                inside_var = True
+                break
+        if not inside_var:
+            matches.append((m.start(), m.end(), 'cell', m.group(1)))
+    # Sort matches by start position
+    matches.sort(key=lambda x: x[0])
+    idx = 0
+    while idx < len(matches):
+        mstart, mend, mtype, mval = matches[idx]
+        # Add preceding text
+        prev_end = matches[idx-1][1] if idx > 0 else 0
+        if mstart > prev_end:
+            parts.append('"' + template[prev_end:mstart].replace('"', '""') + '"')
+        if mtype == 'var':
+            if mval == 'main_keyword' and main_keyword:
+                parts.append('"' + main_keyword.replace('"', '""') + '"')
+            elif mval in variables:
+                cell = str(variables[mval])
+                if cell_ref_pattern.match(cell):
+                    parts.append(cell)
+                else:
+                    parts.append('"' + cell.replace('"', '""') + '"')
             else:
-                parts.append('"' + cell.replace('"', '""') + '"')
-        else:
-            parts.append('""')
-        last = m.end()
-    if last < len(template):
-        parts.append('"' + template[last:].replace('"', '""') + '"')
+                parts.append('""')
+        elif mtype == 'cell':
+            parts.append(mval)
+        idx += 1
+    # Add trailing text
+    if matches:
+        last_end = matches[-1][1]
+        if last_end < len(template):
+            parts.append('"' + template[last_end:].replace('"', '""') + '"')
+    else:
+        parts.append('"' + template.replace('"', '""') + '"')
     concat = ', '.join(parts)
     formula = f'=SPINTAX(CONCATENATE({concat}))'
     return formula, None

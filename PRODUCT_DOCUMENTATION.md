@@ -5,18 +5,18 @@ A Flask web application for generating spintax templates and Google Sheets formu
 
 ## Key Features
 - **Variables Tab:** Add, remove, and clear variable-to-cell mappings for template generation.
-- **Template Tab:** Edit spintax templates, preview with sample values, and generate Google Sheets formulas.
-- **Prompt Manager Tab:** Add, edit, load, and delete named prompts. Dropdown selection loads prompt; Save/Delete buttons perform respective actions.
+- **Template Tab:** Edit spintax templates, preview with sample values, generate Google Sheets formulas, and select templates from a dropdown.
+- **Template Manager Tab:** Add, edit, load, and delete named templates. Dropdown selection loads template; Save/Delete buttons perform respective actions.
+- **Flexible Template Recognition:** Both variable placeholders (`{{City}}`) and direct cell references (`A1`, `B1`) in the template are recognized and correctly output as cell references in the Google Sheets formula.
 - **Debugging:** Backend print statements and frontend debug block for troubleshooting.
-- **Modular Codebase:** Separate modules for spintax logic and prompt management.
+- **Modular Codebase:** Separate modules for spintax logic and template management.
 
 ## Recent Changes (as of August 1, 2025)
-- Refactored form action handling in Prompt Manager tab:
-  - Dropdown selection uses JS to set a temporary hidden action field for loading prompts.
-  - Save/Delete buttons use their own action values, ensuring reliable prompt management.
-  - Removed persistent hidden action field to prevent action conflicts.
-- Confirmed reliable add, edit, and delete functionality for prompts in the web UI.
-- Debug block displays current form state for easier troubleshooting.
+- Refactored formula generation logic:
+  - Now recognizes both `{{variable}}` and direct cell references (e.g., `A1`, `B1`) in the template.
+  - Formula output correctly separates cell references from quoted text for Google Sheets compatibility.
+- Template Tab now includes a dropdown to select and load templates, filling the Spintax Template textarea.
+- All requested UI and backend changes for robust template management are complete.
 
 ## Next Steps
 - User to confirm all prompt management actions work as expected.
@@ -24,6 +24,7 @@ A Flask web application for generating spintax templates and Google Sheets formu
 
 ## File References
 - `spintax_template_webapp.py`: Main Flask app, backend logic, debugging.
+- `spintax_utils.py`: Spintax preview and formula generation logic.
 - `templates/index.html`: Jinja2 template, UI, form action handling, debug block.
 
 ## Status
