@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spintax Template Generator for Google Sheets</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f7f7fa; }
+        .header { background: #1E2E66; color: #fff; padding: 1.5rem 2rem; margin-bottom: 2rem; }
+        .nav-tabs .nav-link.active { background: #eaf3fb; border-color: #eaf3fb #eaf3fb #fff; color: #1E2E66; font-weight: bold; }
+        .nav-tabs .nav-link { color: #1E2E66; }
+        .section { background: #eaf3fb; border-radius: 8px; padding: 2rem; margin-bottom: 2rem; border: 1px solid #d0d7e5; }
+        .accent-btn { background: #1E2E66; color: #fff; font-weight: bold; }
+        .accent-btn:hover { background: #16204a; color: #fff; }
+        .form-label { font-weight: 500; }
+        .list-group-item { font-family: 'Segoe UI', sans-serif; }
+        .tab-content { margin-top: 2rem; }
+        .form-check-input:checked { background-color: #1E2E66; border-color: #1E2E66; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Spintax Template Generator for Google Sheets</h2>
+    </div>
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{category}}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if tab=='variables' %}active{% endif %}" id="variables-tab" data-bs-toggle="tab" href="#variables" role="tab">Variables</a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if tab=='template' %}active{% endif %}" id="template-tab" data-bs-toggle="tab" href="#template" role="tab">Template</a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if tab=='prompts' %}active{% endif %}" id="prompts-tab" data-bs-toggle="tab" href="#prompts" role="tab">Prompt Manager</a>
+            </li>
+        </ul>
+        <div class="tab-content">
+            <!-- Variables Tab -->
+            <div class="tab-pane fade {% if tab=='variables' %}show active{% endif %}" id="variables" role="tabpanel">
+                <form method="post" class="section">
+                    <input type="hidden" name="variables_json" value='{{ variables|tojson }}'>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Variable Name</label>
+                            <input type="text" class="form-control" name="var_name" placeholder="e.g. product">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cell Reference</label>
+                            <input type="text" class="form-control" name="var_cell" placeholder="e.g. B2">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" name="action" value="add_variable" class="btn accent-btn w-100">Add Variable</button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Variables List</label>
+                        <ul class="list-group">
+                            {% for var, cell in variables.items() %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>{{ var }} → {{ cell }}</span>
+                                <button type="submit" name="action" value="remove_variable" name="remove_var_btn" class="btn btn-sm btn-outline-danger" onclick="document.getElementById('remove_var').value='{{ var }}'">Remove</button>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <input type="hidden" id="remove_var" name="remove_var">
+                    </div>
+                    <button type="submit" name="action" value="clear_variables" class="btn btn-secondary">Clear All Variables</button>
+                </form>
+            </div>
+            <!-- Template Tab -->
+            <div class="tab-pane fade {% if tab=='template' %}show active{% endif %}" id="template" role="tabpanel">
+                <form method="post" class="section">
+                    <input type="hidden" name="variables_json" value='{{ variables|tojson }}'>
+                    <div class="mb-3">
+                        <label class="form-label">Main Keyword</label>
+                        <input type="text" class="form-control" name="main_keyword" value="{{ main_keyword }}" placeholder="e.g. Windows">
+                    </div>
+                    <!-- Prompt selection removed from Template tab -->
+                    <div class="mb-3">
+                        <label class="form-label">Spintax Template (editable)</label>
+                        <textarea class="form-control" name="template_text" rows="5">{{ template }}</textarea>
+                        <div class="form-text">Tip: Use variable names like {{'{{City}}'}} in your template. Cell references (e.g., A1) are for formula output only.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sample Values for Preview</label>
+                        <div class="row">
+                            {% for var in variables.keys() %}
+                            <div class="col-md-3 mb-2">
+                                <input type="text" class="form-control" name="sample_{{ var }}" placeholder="Sample for {{ var }}" value="{{ sample_values.get(var, '') }}">
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <button type="submit" name="action" value="preview" class="btn accent-btn">Preview with Sample Values</button>
+                        <button type="submit" name="action" value="generate_formula" class="btn btn-primary">Generate Formula</button>
+                        <button type="submit" name="action" value="clear_template" class="btn btn-secondary">Clear Template</button>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Preview</label>
+                        <textarea class="form-control" rows="4" readonly>{{ preview }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Google Sheets Formula</label>
+                        <textarea class="form-control" rows="4" readonly>{{ formula }}</textarea>
+                    </div>
+                </form>
+            </div>
+            <!-- Prompt Manager Tab -->
+            <div class="tab-pane fade {% if tab=='prompts' %}show active{% endif %}" id="prompts" role="tabpanel">
+                <form method="post" class="section">
+                    <input type="hidden" name="tab" value="prompts">
+                    <input type="hidden" name="variables_json" value='{{ variables|tojson }}'>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Prompt List</label>
+                            <select class="form-select" name="prompt_name" onchange="var f=this.form; var a=document.createElement('input'); a.type='hidden'; a.name='action'; a.value='load_prompt'; f.appendChild(a); f.submit(); f.removeChild(a);">
+                                <option value="">-- Select Prompt --</option>
+                                {% for name in prompts.keys() %}
+                                <option value="{{ name }}" {% if prompt_name==name %}selected{% endif %}>{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                            <!-- No hidden action field; JS sets action for dropdown only -->
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Prompt Name</label>
+                            <input type="text" class="form-control" name="new_prompt_name" placeholder="Enter new prompt name" value="{{ new_prompt_name if new_prompt_name is defined else '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Prompt Text</label>
+                            <textarea class="form-control" name="prompt_text" rows="5">{{ prompt_text }}</textarea>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <button type="submit" name="action" value="save_prompt" class="btn accent-btn">Save Prompt</button>
+                        <button type="submit" name="action" value="delete_prompt" class="btn btn-danger">Delete Prompt</button>
+                    </div>
+                    <!-- Debug block -->
+                    <div class="alert alert-info mt-3">
+                        <strong>Debug Info:</strong><br>
+                        prompt_name: {{ prompt_name }}<br>
+                        new_prompt_name: {{ new_prompt_name }}<br>
+                        prompt_text: {{ prompt_text }}<br>
+                        tab: {{ tab }}<br>
+                        action: {{ request.form.get('action', '') }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Tab navigation on submit
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                let tab = this.closest('.tab-pane').id;
+                if (tab) {
+                    let url = new URL(window.location);
+                    url.searchParams.set('tab', tab);
+                    this.action = url.pathname + url.search;
+                }
+            });
+        });
+
+        // Remove variable button sets hidden input
+        document.querySelectorAll('button[name="remove_var_btn"]').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                document.getElementById('remove_var').value = this.closest('li').querySelector('span').textContent.split('→')[0].trim();
+            });
+        });
+
+        // No JS needed for prompt deletion; backend always uses dropdown value
+    </script>
+</body>
+</html>
