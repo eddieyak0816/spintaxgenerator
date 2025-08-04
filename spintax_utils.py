@@ -16,57 +16,61 @@ def spintax_preview(template, variables, sample_values):
 
 def generate_formula(template, variables, main_keyword):
     # Handle both multiple template options separated by | AND nested spintax within templates
-    # First, check if this is multiple template options or a single template with nested spintax
     
     if not template:
         return '=SPINTAX_NESTED("")', None
     
-    # Check if this looks like multiple separate templates (no nested braces)
-    # vs a single template with nested spintax (contains braces)
-    has_nested_braces = '{' in template and '}' in template
-    
-    # Check if we have {{...}} patterns that look like variables vs spintax
-    var_pattern = re.compile(r'\{\{([^{}]*)\}\}')  # Variables don't contain braces inside
-    spintax_pattern = re.compile(r'\{[^{}]*\|[^{}]*\}')  # Spintax contains pipes
-    
-    has_variables = bool(var_pattern.search(template))
-    has_spintax = bool(spintax_pattern.search(template))
-    
-    # If template contains {{...}} with braces inside, it's likely spintax wrapped in variable syntax
-    # Let's check for patterns like {{...{...}...}} which indicate spintax inside variable brackets
+    # First, handle complex variable patterns like {{spintax}}
     complex_var_pattern = re.compile(r'\{\{[^}]*\{[^}]*\}[^}]*\}\}')
-    has_complex_vars = bool(complex_var_pattern.search(template))
-    
-    if has_complex_vars:
-        # This is spintax wrapped in {{...}}, let's unwrap it
-        # Find the pattern {{spintax}} and extract just the spintax part
+    if complex_var_pattern.search(template):
+        # This template contains spintax wrapped in {{...}}, let's unwrap it
         def unwrap_spintax(match):
             content = match.group(1)  # Content inside {{...}}
             return content  # Return just the content without the outer braces
         
         template = complex_var_pattern.sub(unwrap_spintax, template)
-        return create_formula_from_processed_content(template, variables, main_keyword)
     
-    if not has_nested_braces and '|' in template:
-        # This looks like multiple separate template options
-        template_parts = [part.strip() for part in template.split('|') if part.strip()]
-        
-        if len(template_parts) > 1:
-            # Process each template part and combine with spintax format
-            processed_options = []
-            
-            for template_part in template_parts:
-                processed_part = process_single_template(template_part, variables, main_keyword)
-                processed_options.append(processed_part)
-            
-            # Create spintax format with the processed options
-            spintax_content = '{' + '|'.join(processed_options) + '}'
-            return create_formula_from_processed_content(spintax_content, variables, main_keyword)
+    # Now check if we have multiple template options (split by | at the top level)
+    # We need to be careful not to split on | that are inside {} braces
+    
+    # Split the template by | but only at the top level (not inside braces)
+    template_parts = []
+    current_part = ""
+    brace_depth = 0
+    
+    for char in template:
+        if char == '{':
+            brace_depth += 1
+            current_part += char
+        elif char == '}':
+            brace_depth -= 1
+            current_part += char
+        elif char == '|' and brace_depth == 0:
+            # This is a top-level pipe separator
+            if current_part.strip():
+                template_parts.append(current_part.strip())
+            current_part = ""
         else:
-            # Single template
-            return create_formula_from_processed_content(template_parts[0], variables, main_keyword)
+            current_part += char
+    
+    # Don't forget the last part
+    if current_part.strip():
+        template_parts.append(current_part.strip())
+    
+    # If we have multiple template parts, create spintax format
+    if len(template_parts) > 1:
+        # Process each template part individually
+        processed_options = []
+        
+        for template_part in template_parts:
+            processed_part = process_single_template(template_part, variables, main_keyword)
+            processed_options.append(processed_part)
+        
+        # Create spintax format with the processed options
+        spintax_content = '{' + '|'.join(processed_options) + '}'
+        return create_formula_from_processed_content(spintax_content, variables, main_keyword)
     else:
-        # This is a single template (may contain nested spintax)
+        # Single template (may contain nested spintax)
         return create_formula_from_processed_content(template, variables, main_keyword)
 
 def process_single_template(template_part, variables, main_keyword):
