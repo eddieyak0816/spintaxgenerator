@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEO Content Generator - Prompt Builder</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #f7f7fa; }
+        .header { background: #1E2E66; color: #fff; padding: 1.5rem 2rem; margin-bottom: 2rem; }
+        .section { background: #eaf3fb; border-radius: 8px; padding: 2rem; margin-bottom: 2rem; border: 1px solid #d0d7e5; }
+        .accent-btn { background: #1E2E66; color: #fff; font-weight: bold; }
+        .accent-btn:hover { background: #16204a; color: #fff; }
+        .form-label { font-weight: 500; }
+        .section-title { color: #1E2E66; font-weight: bold; margin-bottom: 1rem; border-bottom: 2px solid #1E2E66; padding-bottom: 0.5rem; }
+        .prompt-output { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.5rem; margin-top: 2rem; }
+        .copy-btn { position: absolute; top: 10px; right: 10px; }
+        .prompt-container { position: relative; }
+        .nav-btn { margin: 0 0.5rem; }
+        
+        /* Speech Recognition Styles */
+        .input-group .btn {
+            border-left: 0;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        
+        #speechStatus {
+            transition: all 0.3s ease;
+        }
+        
+        #speechBtn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        #speechBtn.btn-danger {
+            animation: recording-pulse 2s infinite;
+        }
+        
+        @keyframes recording-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        
+        /* Mini speech buttons for questions */
+        .speech-btn-mini {
+            padding: 0.375rem 0.5rem;
+            font-size: 0.875rem;
+            border-left: 0;
+        }
+        
+        .speech-btn-mini:hover {
+            transform: translateY(-1px);
+        }
+        
+        .speech-btn-mini.btn-danger {
+            animation: mini-recording-pulse 1.5s infinite;
+        }
+        
+        @keyframes mini-recording-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.5); }
+            70% { box-shadow: 0 0 0 5px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>SEO Content Generator - Prompt Builder</h2>
+            <a href="/" class="btn btn-light">← Back to Spintax Generator</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{category}}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% if not updated_prompt %}
+        
+        <!-- AI Auto-Fill Section -->
+        <div class="section">
+            <h3 class="section-title">🤖 AI Auto-Fill (Quick Start)</h3>
+            <p class="text-muted">Let AI fill in all the details for you! Just describe your business in a few sentences and we'll generate intelligent answers for all the questions below.</p>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>AI-Powered Responses:</strong> This system uses Google's Gemini AI with specialized prompts for each question to generate contextual, industry-specific answers. Powered by advanced AI reasoning for accurate business analysis.
+            </div>
+            
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label">Describe Your Business</label>
+                    <div class="input-group">
+                        <textarea id="businessDescription" class="form-control" name="business_description" rows="4" placeholder="Example: ABC Marketing is a digital marketing agency in Austin, Texas. We specialize in SEO, social media marketing, and PPC advertising for small to medium businesses. We've been helping local businesses grow their online presence for over 5 years with personalized strategies and transparent reporting.">{{ business_description or '' }}</textarea>
+                        <button type="button" id="speechBtn" class="btn btn-outline-primary" onclick="toggleSpeechRecognition()">
+                            <i id="speechIcon" class="fas fa-microphone"></i>
+                            <span id="speechText">Speak</span>
+                        </button>
+                    </div>
+                    <div id="speechStatus" class="form-text text-muted mt-2" style="display: none;">
+                        <i class="fas fa-circle text-danger me-1" id="recordingIndicator"></i>
+                        <span id="statusText">Click "Speak" to start voice input</span>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <button type="submit" name="action" value="ai_autofill" class="btn accent-btn btn-lg">🤖 Auto-Fill with AI</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="text-center my-4">
+            <span class="text-muted">— OR —</span>
+        </div>
+
+        <!-- Manual Question Form -->
+        <div class="section">
+            <h3 class="section-title">📝 Manual Entry</h3>
+            <p class="text-muted">Fill out the questions manually for complete control over your answers.</p>
+        </div>
+
+        <!-- Question Form -->
+        <form method="post">
+            {% for section_key, section_data in seo_questions.items() %}
+            <div class="section">
+                <h3 class="section-title">{{ section_data.title }}</h3>
+                <div class="row">
+                    {% for question_key, question_text in section_data.questions.items() %}
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ question_text }}</label>
+                        <div class="input-group">
+                            <textarea class="form-control question-textarea" name="{{ section_key }}_{{ question_key }}" rows="3" placeholder="Enter your answer here...">{{ answers.get(section_key, {}).get(question_key, '') }}</textarea>
+                            <button type="button" class="btn btn-outline-secondary btn-sm speech-btn-mini" onclick="startQuestionSpeech(this)">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            
+            <div class="text-center">
+                <button type="submit" name="action" value="generate_prompt" class="btn accent-btn btn-lg">Generate Updated Prompt</button>
+            </div>
+        </form>
+        
+        {% else %}
+        <!-- Generated Prompt Output -->
+        <div class="section">
+            <h3 class="section-title">Your Updated Prompt</h3>
+            <p class="text-muted">Copy the prompt below and use it with your AI assistant to generate comprehensive SEO content templates.</p>
+            
+            <div class="prompt-container">
+                <div class="prompt-output">
+                    <button type="button" class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyPrompt()">Copy Prompt</button>
+                    <pre id="promptText" style="white-space: pre-wrap; margin-bottom: 0;">{{ updated_prompt }}</pre>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <a href="/prompt-builder" class="btn btn-secondary nav-btn">← Edit Answers</a>
+                <a href="/" class="btn accent-btn nav-btn">Use in Spintax Generator →</a>
+            </div>
+        </div>
+        
+        <!-- Summary of Answers -->
+        <div class="section">
+            <h4 class="section-title">Your Answers Summary</h4>
+            {% for section_key, section_data in seo_questions.items() %}
+                {% if answers.get(section_key) %}
+                <div class="mb-3">
+                    <h5 class="text-primary">{{ section_data.title }}</h5>
+                    <ul class="list-unstyled ms-3">
+                        {% for question_key, question_text in section_data.questions.items() %}
+                            {% if answers[section_key].get(question_key) %}
+                            <li><strong>{{ question_text }}</strong><br>
+                                <span class="text-muted">{{ answers[section_key][question_key] }}</span></li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function copyPrompt() {
+            const promptText = document.getElementById('promptText').textContent;
+            navigator.clipboard.writeText(promptText).then(function() {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-success');
+                
+                setTimeout(function() {
+                    btn.textContent = originalText;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-secondary');
+                }, 2000);
+            }).catch(function(err) {
+                alert('Failed to copy prompt. Please select and copy manually.');
+            });
+        }
+
+        // Check if answers were provided (indicating AI auto-fill was used)
+        {% if answers %}
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add visual indicators that AI filled the form
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(function(section) {
+                const title = section.querySelector('.section-title');
+                if (title && !title.textContent.includes('Auto-Fill') && !title.textContent.includes('Manual Entry')) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-success ms-2';
+                    badge.textContent = 'AI Filled';
+                    title.appendChild(badge);
+                }
+            });
+
+            // Scroll to the first question section
+            const firstQuestionSection = document.querySelector('.section h3.section-title');
+            if (firstQuestionSection && !firstQuestionSection.textContent.includes('Auto-Fill')) {
+                firstQuestionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+        {% endif %}
+
+        // Auto-resize textareas
+        document.addEventListener('DOMContentLoaded', function() {
+            const textareas = document.querySelectorAll('textarea');
+            textareas.forEach(function(textarea) {
+                function autoResize() {
+                    textarea.style.height = 'auto';
+                    textarea.style.height = textarea.scrollHeight + 'px';
+                }
+                
+                textarea.addEventListener('input', autoResize);
+                // Initial resize
+                autoResize();
+            });
+        });
+
+        // Speech Recognition Variables
+        let recognition;
+        let isRecording = false;
+        let speechTimeout;
+
+        // Initialize Speech Recognition
+        function initSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+                
+                recognition.onstart = function() {
+                    isRecording = true;
+                    updateSpeechUI(true);
+                    document.getElementById('statusText').textContent = 'Listening... Speak now!';
+                    
+                    // Auto-stop after 30 seconds of recording
+                    speechTimeout = setTimeout(() => {
+                        stopSpeechRecognition();
+                    }, 30000);
+                };
+                
+                recognition.onresult = function(event) {
+                    let finalTranscript = '';
+                    let interimTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript + ' ';
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+                    
+                    const textarea = document.getElementById('businessDescription');
+                    const currentText = textarea.value;
+                    
+                    // If we have new final results, append them
+                    if (finalTranscript) {
+                        if (currentText && !currentText.endsWith(' ') && !currentText.endsWith('.')) {
+                            textarea.value = currentText + ' ' + finalTranscript.trim();
+                        } else {
+                            textarea.value = currentText + finalTranscript.trim();
+                        }
+                        
+                        // Auto-resize textarea
+                        textarea.style.height = 'auto';
+                        textarea.style.height = textarea.scrollHeight + 'px';
+                    }
+                    
+                    // Show interim results in status
+                    if (interimTranscript) {
+                        document.getElementById('statusText').textContent = 'Hearing: "' + interimTranscript + '"';
+                    } else if (finalTranscript) {
+                        document.getElementById('statusText').textContent = 'Added: "' + finalTranscript.trim() + '"';
+                    }
+                };
+                
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                    let errorMessage = 'Speech recognition error: ';
+                    switch(event.error) {
+                        case 'no-speech':
+                            errorMessage += 'No speech detected. Try speaking louder.';
+                            break;
+                        case 'audio-capture':
+                            errorMessage += 'No microphone found. Please check your microphone.';
+                            break;
+                        case 'not-allowed':
+                            errorMessage += 'Microphone access denied. Please allow microphone access.';
+                            break;
+                        case 'network':
+                            errorMessage += 'Network error. Please check your internet connection.';
+                            break;
+                        default:
+                            errorMessage += event.error;
+                    }
+                    document.getElementById('statusText').textContent = errorMessage;
+                    stopSpeechRecognition();
+                };
+                
+                recognition.onend = function() {
+                    isRecording = false;
+                    updateSpeechUI(false);
+                    if (speechTimeout) {
+                        clearTimeout(speechTimeout);
+                    }
+                };
+                
+                return true;
+            } else {
+                document.getElementById('speechBtn').style.display = 'none';
+                console.warn('Speech recognition not supported in this browser');
+                return false;
+            }
+        }
+
+        function toggleSpeechRecognition() {
+            if (!recognition && !initSpeechRecognition()) {
+                alert('Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.');
+                return;
+            }
+            
+            if (isRecording) {
+                stopSpeechRecognition();
+            } else {
+                startSpeechRecognition();
+            }
+        }
+
+        function startSpeechRecognition() {
+            document.getElementById('speechStatus').style.display = 'block';
+            document.getElementById('statusText').textContent = 'Starting speech recognition...';
+            recognition.start();
+        }
+
+        function stopSpeechRecognition() {
+            if (recognition && isRecording) {
+                recognition.stop();
+            }
+            isRecording = false;
+            updateSpeechUI(false);
+            document.getElementById('statusText').textContent = 'Speech recognition stopped.';
+            
+            setTimeout(() => {
+                document.getElementById('speechStatus').style.display = 'none';
+            }, 3000);
+        }
+
+        function updateSpeechUI(recording) {
+            const btn = document.getElementById('speechBtn');
+            const icon = document.getElementById('speechIcon');
+            const text = document.getElementById('speechText');
+            const indicator = document.getElementById('recordingIndicator');
+            
+            if (recording) {
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-danger');
+                icon.classList.remove('fa-microphone');
+                icon.classList.add('fa-stop');
+                text.textContent = 'Stop';
+                indicator.classList.remove('text-danger');
+                indicator.classList.add('text-success');
+                
+                // Animate the recording indicator
+                indicator.style.animation = 'pulse 1s infinite';
+            } else {
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-outline-primary');
+                icon.classList.remove('fa-stop');
+                icon.classList.add('fa-microphone');
+                text.textContent = 'Speak';
+                indicator.classList.remove('text-success');
+                indicator.classList.add('text-danger');
+                indicator.style.animation = 'none';
+            }
+        }
+
+        // Initialize speech recognition on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initSpeechRecognition();
+        });
+
+        // Quick speech function for individual questions
+        let currentQuestionRecognition = null;
+        let currentQuestionButton = null;
+
+        function startQuestionSpeech(button) {
+            // Stop any existing recognition
+            if (currentQuestionRecognition) {
+                currentQuestionRecognition.stop();
+            }
+
+            const textarea = button.previousElementSibling;
+            currentQuestionButton = button;
+            
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                currentQuestionRecognition = new SpeechRecognition();
+                
+                currentQuestionRecognition.continuous = false;
+                currentQuestionRecognition.interimResults = false;
+                currentQuestionRecognition.lang = 'en-US';
+                
+                currentQuestionRecognition.onstart = function() {
+                    button.classList.remove('btn-outline-secondary');
+                    button.classList.add('btn-danger');
+                    button.innerHTML = '<i class="fas fa-stop"></i>';
+                    button.disabled = true;
+                };
+                
+                currentQuestionRecognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    
+                    // Add the speech to existing text
+                    if (textarea.value && !textarea.value.endsWith(' ') && !textarea.value.endsWith('.')) {
+                        textarea.value += ' ' + transcript;
+                    } else {
+                        textarea.value += transcript;
+                    }
+                    
+                    // Auto-resize textarea
+                    textarea.style.height = 'auto';
+                    textarea.style.height = textarea.scrollHeight + 'px';
+                };
+                
+                currentQuestionRecognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                    resetQuestionSpeechButton();
+                };
+                
+                currentQuestionRecognition.onend = function() {
+                    resetQuestionSpeechButton();
+                };
+                
+                currentQuestionRecognition.start();
+                
+                // Auto-stop after 10 seconds
+                setTimeout(() => {
+                    if (currentQuestionRecognition) {
+                        currentQuestionRecognition.stop();
+                    }
+                }, 10000);
+            } else {
+                alert('Speech recognition is not supported in your browser.');
+            }
+        }
+
+        function resetQuestionSpeechButton() {
+            if (currentQuestionButton) {
+                currentQuestionButton.classList.remove('btn-danger');
+                currentQuestionButton.classList.add('btn-outline-secondary');
+                currentQuestionButton.innerHTML = '<i class="fas fa-microphone"></i>';
+                currentQuestionButton.disabled = false;
+                currentQuestionButton = null;
+            }
+            currentQuestionRecognition = null;
+        }
+    </script>
+</body>
+</html>
