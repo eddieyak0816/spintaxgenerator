@@ -19,6 +19,66 @@
         .prompt-container { position: relative; }
         .nav-btn { margin: 0 0.5rem; }
         
+        /* Live Preview Layout */
+        .live-preview-container {
+            position: sticky;
+            top: 20px;
+            height: fit-content;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .live-preview {
+            background: #f8f9fa;
+            color: #2c3e50;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            min-height: 200px;
+        }
+        
+        .preview-title {
+            color: #1E2E66;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .copy-preview-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #1E2E66;
+            border: 1px solid #1E2E66;
+            color: white;
+        }
+        
+        .copy-preview-btn:hover {
+            background: #16204a;
+            color: white;
+        }
+        
+        /* Question Form Styling */
+        .question-form-container {
+            padding-right: 1rem;
+        }
+        
+        @media (max-width: 991px) {
+            .question-form-container {
+                padding-right: 0;
+                margin-bottom: 2rem;
+            }
+            
+            .live-preview-container {
+                position: static;
+                max-height: none;
+            }
+        }
+        
         /* Speech Recognition Styles */
         .input-group .btn {
             border-left: 0;
@@ -124,6 +184,89 @@
             <span class="text-muted">— OR —</span>
         </div>
 
+        <!-- Cell Reference Mapping Section -->
+        <div class="section">
+            <h3 class="section-title">📊 Cell Reference Mapping</h3>
+            <p class="text-muted">Define the Google Sheets cell references that will be used in your spintax formulas. This is required for generating location-specific content.</p>
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Important:</strong> Only the cell references you define here will be used in the generated formulas. Do not leave this blank if you want dynamic content.
+            </div>
+            
+            <form method="post" id="cellMappingForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Primary Keyword Cell</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="cell_primary_keyword" 
+                                   placeholder="e.g., A2" 
+                                   value="{{ cell_mappings.get('primary_keyword', '') if cell_mappings is defined else '' }}"
+                                   oninput="updateLivePreview()">
+                            <span class="input-group-text">Primary Keyword</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Business Name Cell</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="cell_business_name" 
+                                   placeholder="e.g., B2" 
+                                   value="{{ cell_mappings.get('business_name', '') if cell_mappings is defined else '' }}"
+                                   oninput="updateLivePreview()">
+                            <span class="input-group-text">Business Name</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">City Cell</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="cell_city" 
+                                   placeholder="e.g., C2" 
+                                   value="{{ cell_mappings.get('city', '') if cell_mappings is defined else '' }}"
+                                   oninput="updateLivePreview()">
+                            <span class="input-group-text">City</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">State Cell</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="cell_state" 
+                                   placeholder="e.g., D2" 
+                                   value="{{ cell_mappings.get('state', '') if cell_mappings is defined else '' }}"
+                                   oninput="updateLivePreview()">
+                            <span class="input-group-text">State</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Phone Number Cell</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="cell_phone" 
+                                   placeholder="e.g., E2" 
+                                   value="{{ cell_mappings.get('phone', '') if cell_mappings is defined else '' }}"
+                                   oninput="updateLivePreview()">
+                            <span class="input-group-text">Phone</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Contact URL Cell</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="cell_contact_url" 
+                                   placeholder="e.g., F2" 
+                                   value="{{ cell_mappings.get('contact_url', '') if cell_mappings is defined else '' }}"
+                                   oninput="updateLivePreview()">
+                            <span class="input-group-text">Contact URL</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Additional Cell Mappings</label>
+                    <textarea class="form-control" name="additional_cell_mappings" rows="3" 
+                              placeholder="Enter additional cell mappings, one per line. Example:&#10;G2 = Zip Code&#10;H2 = County&#10;I2 = Service Radius"
+                              oninput="updateLivePreview()">{{ cell_mappings.get('additional', '') if cell_mappings is defined else '' }}</textarea>
+                    <div class="form-text">Optional: Define any additional cells you want to reference in your content.</div>
+                </div>
+            </form>
+        </div>
+
         <!-- Manual Question Form -->
         <div class="section">
             <h3 class="section-title">📝 Manual Entry</h3>
@@ -131,30 +274,67 @@
         </div>
 
         <!-- Question Form -->
-        <form method="post">
-            {% for section_key, section_data in seo_questions.items() %}
-            <div class="section">
-                <h3 class="section-title">{{ section_data.title }}</h3>
-                <div class="row">
-                    {% for question_key, question_text in section_data.questions.items() %}
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">{{ question_text }}</label>
-                        <div class="input-group">
-                            <textarea class="form-control question-textarea" name="{{ section_key }}_{{ question_key }}" rows="3" placeholder="Enter your answer here...">{{ answers.get(section_key, {}).get(question_key, '') }}</textarea>
-                            <button type="button" class="btn btn-outline-secondary btn-sm speech-btn-mini" onclick="startQuestionSpeech(this)">
-                                <i class="fas fa-microphone"></i>
-                            </button>
+        <div class="row">
+            <!-- Left Column: Questions -->
+            <div class="col-lg-7 question-form-container">
+                <form method="post" id="promptForm">
+                    {% for section_key, section_data in seo_questions.items() %}
+                    <div class="section">
+                        <h3 class="section-title">{{ section_data.title }}</h3>
+                        <div class="row">
+                            {% for question_key, question_text in section_data.questions.items() %}
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">{{ question_text }}</label>
+                                <div class="input-group">
+                                    <textarea class="form-control question-textarea" 
+                                              name="{{ section_key }}_{{ question_key }}" 
+                                              data-section="{{ section_key }}" 
+                                              data-question="{{ question_key }}"
+                                              rows="3" 
+                                              placeholder="Enter your answer here..."
+                                              oninput="updateLivePreview()">{{ answers.get(section_key, {}).get(question_key, '') }}</textarea>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm speech-btn-mini" onclick="startQuestionSpeech(this)">
+                                        <i class="fas fa-microphone"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                     {% endfor %}
+                    
+                    <div class="text-center">
+                        <button type="submit" name="action" value="generate_prompt" class="btn accent-btn btn-lg">Generate Final Prompt</button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Right Column: Live Preview -->
+            <div class="col-lg-5">
+                <div class="live-preview-container">
+                    <div class="position-relative">
+                        <div class="preview-title">Your Generated Meta Prompt</div>
+                        <button type="button" class="btn btn-sm copy-preview-btn" onclick="copyLivePreview()">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <div id="livePreview" class="live-preview">
+SEO Content Generation Prompt
+
+(Start filling out the form fields above to see your custom SEO content prompt appear here...)
+
+This prompt will help you generate:
+• Website copy and landing pages
+• Blog posts and articles  
+• Meta descriptions and titles
+• Social media content
+• Ad copy and marketing materials
+
+All optimized for search engines and your target audience.
+                        </div>
+                    </div>
                 </div>
             </div>
-            {% endfor %}
-            
-            <div class="text-center">
-                <button type="submit" name="action" value="generate_prompt" class="btn accent-btn btn-lg">Generate Updated Prompt</button>
-            </div>
-        </form>
+        </div>
         
         {% else %}
         <!-- Generated Prompt Output -->
@@ -276,10 +456,10 @@
                     updateSpeechUI(true);
                     document.getElementById('statusText').textContent = 'Listening... Speak now!';
                     
-                    // Auto-stop after 30 seconds of recording
+                    // Auto-stop after 60 seconds of recording (increased from 30)
                     speechTimeout = setTimeout(() => {
                         stopSpeechRecognition();
-                    }, 30000);
+                    }, 60000);
                 };
                 
                 recognition.onresult = function(event) {
@@ -300,10 +480,11 @@
                     
                     // If we have new final results, append them
                     if (finalTranscript) {
+                        const processedText = addBasicPunctuation(finalTranscript.trim());
                         if (currentText && !currentText.endsWith(' ') && !currentText.endsWith('.')) {
-                            textarea.value = currentText + ' ' + finalTranscript.trim();
+                            textarea.value = currentText + ' ' + processedText;
                         } else {
-                            textarea.value = currentText + finalTranscript.trim();
+                            textarea.value = currentText + processedText;
                         }
                         
                         // Auto-resize textarea
@@ -422,13 +603,388 @@
         // Initialize speech recognition on page load
         document.addEventListener('DOMContentLoaded', function() {
             initSpeechRecognition();
+            updateLivePreview(); // Initialize preview
         });
+
+        // Live Preview Functions
+        function updateLivePreview() {
+            const formData = new FormData(document.getElementById('promptForm'));
+            const cellFormData = new FormData(document.getElementById('cellMappingForm'));
+            const answers = {};
+            
+            // Collect all form data from both forms
+            for (let [key, value] of formData.entries()) {
+                if (value.trim()) {
+                    answers[key] = value.trim();
+                }
+            }
+            
+            // Also collect cell mapping data for preview
+            for (let [key, value] of cellFormData.entries()) {
+                if (value.trim()) {
+                    answers[key] = value.trim();
+                }
+            }
+            
+            // Generate preview prompt
+            let prompt = generatePreviewPrompt(answers);
+            document.getElementById('livePreview').textContent = prompt;
+        }
+        
+        function generatePreviewPrompt(answers) {
+            let prompt = "";
+            let hasContent = false;
+            
+            // Build SEO Content Generation Prompt
+            prompt += "You are an expert SEO content generator trained in using spintax formatting and producing outputs structured for Google Sheets formulas using:\n\n";
+            prompt += "=SPINTAX_NESTED(CONCATENATE( ... ))\n\n";
+            prompt += "🎯 Your task is to help generate programmatic SEO content templates using Google Sheets + spintax. These templates will be used to dynamically generate **hundreds of location-specific pages**.\n\n";
+            
+            // Get cell mappings from the form
+            const cellMappingForm = document.getElementById('cellMappingForm');
+            let cellMappings = "";
+            if (cellMappingForm) {
+                const formData = new FormData(cellMappingForm);
+                let mappingLines = [];
+                
+                if (formData.get('cell_primary_keyword')) {
+                    mappingLines.push(`${formData.get('cell_primary_keyword')} = Primary Keyword`);
+                }
+                if (formData.get('cell_business_name')) {
+                    mappingLines.push(`${formData.get('cell_business_name')} = Business Name`);
+                }
+                if (formData.get('cell_city')) {
+                    mappingLines.push(`${formData.get('cell_city')} = City`);
+                }
+                if (formData.get('cell_state')) {
+                    mappingLines.push(`${formData.get('cell_state')} = State`);
+                }
+                if (formData.get('cell_phone')) {
+                    mappingLines.push(`${formData.get('cell_phone')} = Phone Number`);
+                }
+                if (formData.get('cell_contact_url')) {
+                    mappingLines.push(`${formData.get('cell_contact_url')} = Contact URL`);
+                }
+                
+                const additional = formData.get('additional_cell_mappings');
+                if (additional && additional.trim()) {
+                    mappingLines.push(...additional.trim().split('\n').filter(line => line.trim()));
+                }
+                
+                if (mappingLines.length > 0) {
+                    cellMappings = mappingLines.join('\n');
+                    hasContent = true;
+                }
+            }
+            
+            if (cellMappings) {
+                prompt += "📍 **CELL MAPPINGS PROVIDED:**\n";
+                prompt += cellMappings + "\n\n";
+                prompt += "⚠️ Only use the exact cell mappings provided above.\n";
+                prompt += "🚫 Do not make assumptions or use any unmapped references.\n\n";
+            } else {
+                prompt += "📍 **PLEASE PROVIDE CELL MAPPINGS:**\n";
+                prompt += "Please provide the cell references for any data you want used in the content formulas.\n";
+                prompt += "For example:\n";
+                prompt += "A2 = City\n";
+                prompt += "B2 = State\n";
+                prompt += "C2 = Primary Keyword\n";
+                prompt += "D2 = Business Name\n\n";
+                prompt += "⚠️ Only use the exact cell mappings you provide.\n";
+                prompt += "🚫 Do not make assumptions or use any unmapped references.\n\n";
+            }
+            
+            // Add business context from form if provided
+            let businessContext = "";
+            if (answers.business_info_business_name) {
+                businessContext += `**Business Name:** ${answers.business_info_business_name}\n`;
+                hasContent = true;
+            }
+            if (answers.business_info_industry) {
+                businessContext += `**Industry:** ${answers.business_info_industry}\n`;
+                hasContent = true;
+            }
+            if (answers.business_info_location) {
+                businessContext += `**Location:** ${answers.business_info_location}\n`;
+                hasContent = true;
+            }
+            if (answers.business_info_target_audience) {
+                businessContext += `**Target Audience:** ${answers.business_info_target_audience}\n`;
+                hasContent = true;
+            }
+            if (answers.business_info_unique_selling_proposition) {
+                businessContext += `**Unique Selling Proposition:** ${answers.business_info_unique_selling_proposition}\n`;
+                hasContent = true;
+            }
+            
+            if (businessContext) {
+                prompt += "📋 **BUSINESS CONTEXT:**\n";
+                prompt += businessContext + "\n";
+            }
+            
+            // Add services/products context
+            if (answers.services_products_main_services) {
+                prompt += `**Services/Products:** ${answers.services_products_main_services}\n`;
+                hasContent = true;
+            }
+            if (answers.services_products_service_benefits) {
+                prompt += `**Key Benefits:** ${answers.services_products_service_benefits}\n`;
+                hasContent = true;
+            }
+            if (answers.services_products_service_area) {
+                prompt += `**Service Area:** ${answers.services_products_service_area}\n`;
+                hasContent = true;
+            }
+            if (answers.services_products_pricing_model) {
+                prompt += `**Pricing Model:** ${answers.services_products_pricing_model}\n`;
+                hasContent = true;
+            }
+            
+            // Add SEO requirements
+            let seoSection = "";
+            if (answers.seo_content_primary_keywords) {
+                seoSection += `**Primary Keywords:** ${answers.seo_content_primary_keywords}\n`;
+                hasContent = true;
+            }
+            if (answers.seo_content_secondary_keywords) {
+                seoSection += `**Secondary Keywords:** ${answers.seo_content_secondary_keywords}\n`;
+                hasContent = true;
+            }
+            if (answers.seo_content_content_tone) {
+                seoSection += `**Content Tone:** ${answers.seo_content_content_tone}\n`;
+                hasContent = true;
+            }
+            if (answers.seo_content_content_length) {
+                seoSection += `**Content Length:** ${answers.seo_content_content_length}\n`;
+                hasContent = true;
+            }
+            if (answers.seo_content_call_to_action) {
+                seoSection += `**Call to Action:** ${answers.seo_content_call_to_action}\n`;
+                hasContent = true;
+            }
+            if (seoSection) {
+                prompt += "\n📈 **SEO REQUIREMENTS:**\n";
+                prompt += seoSection;
+            }
+            
+            // Add competitive information
+            if (answers.competitors_main_competitors || answers.competitors_competitive_advantage) {
+                let compSection = "";
+                if (answers.competitors_main_competitors) {
+                    compSection += `**Main Competitors:** ${answers.competitors_main_competitors}\n`;
+                }
+                if (answers.competitors_competitive_advantage) {
+                    compSection += `**Competitive Advantages:** ${answers.competitors_competitive_advantage}\n`;
+                }
+                if (answers.competitors_market_position) {
+                    compSection += `**Market Position:** ${answers.competitors_market_position}\n`;
+                }
+                prompt += "\n🏆 **COMPETITIVE CONTEXT:**\n";
+                prompt += compSection;
+                hasContent = true;
+            }
+            
+            prompt += "\n✅ **GENERATE 3 VERSIONS OF EACH:**\n";
+            prompt += "- Fully spun article (800-1500 words after spinning)\n";
+            prompt += "- Meta Title\n";
+            prompt += "- Meta Description\n";
+            prompt += "- Meta Keywords\n";
+            prompt += "- FAQ Section\n";
+            prompt += "- Schema Markup suggestions\n\n";
+            
+            prompt += "🧾 **REQUIREMENTS:**\n";
+            prompt += "1. Use extensive spintax throughout all content (words, phrases, and sentences)\n";
+            prompt += "2. Use nested spintax wherever possible\n";
+            prompt += "3. Wrap everything in =SPINTAX_NESTED(CONCATENATE(...)) so it can be pasted into Google Sheets\n";
+            prompt += "4. Use HTML tags for structure (e.g., <h1>, <h2>, <ul>, <p>)\n";
+            prompt += "5. Only use the cell references provided above — do not insert your own\n\n";
+            
+            prompt += "📎 **INTERNAL LINK FORMAT:**\n";
+            prompt += "Include hyperlinks that build paths using:\n";
+            prompt += "- The keyword + location fields (if provided)\n";
+            prompt += "- Replace spaces with hyphens, all lowercase\n";
+            prompt += "- Skip blank fields cleanly\n\n";
+            
+            prompt += "🧷 **SAMPLE FORMULAS:**\n";
+            prompt += "Hyperlink: =IF(Keyword=\"\", \"\", \"<a href='/\" & LOWER(SUBSTITUTE(JOIN(\"-\", FILTER({Keyword,City,State}, {Keyword,City,State} <> \"\")), \" \", \"-\")) & \"'>\" & \"Service in \" & TEXTJOIN(\", \", TRUE, FILTER({City,State}, {City,State} <> \"\")) & \"</a>\")\n\n";
+            prompt += "Slug: =IF(Keyword=\"\", \"\", LOWER(SUBSTITUTE(JOIN(\"-\", FILTER({Keyword,City,State}, {Keyword,City,State} <> \"\")), \" \", \"-\")))\n\n";
+            
+            prompt += "🧩 **SPINTAX EXAMPLES:**\n";
+            prompt += "- Simple: `{granite|quartz|marble} counters`\n";
+            prompt += "- Nested: `{Upgrade|{Transform|Elevate}|{Beautify|Enhance}} your kitchen`\n\n";
+            
+            prompt += "� ON-PAGE SEO OPTIMIZATION REQUIREMENTS:\n\n";
+            prompt += "📊 **Keyword Optimization:**\n";
+            prompt += "- Primary keyword density: 0.5-2.5% (natural integration, avoid stuffing)\n";
+            prompt += "- Include primary keyword in: Title (beginning preferred), first 100 words, H1/H2 tags, meta description\n";
+            prompt += "- Use keyword variations and synonyms throughout (LSI keywords)\n";
+            prompt += "- Include location-based keyword combinations (e.g., '[service] in [city]', '[city] [service]')\n";
+            prompt += "- Distribute secondary keywords naturally (0.5-1% density each)\n\n";
+            prompt += "📏 **Content Structure & Length:**\n";
+            prompt += "- Target 800-2000 words for main content (after spintax spinning)\n";
+            prompt += "- Use proper heading hierarchy: H1 (main title), H2 (sections), H3 (subsections)\n";
+            prompt += "- Include 3-5 H2 headings with target keywords\n";
+            prompt += "- Create scannable content with bullet points, numbered lists, and short paragraphs (2-4 sentences)\n";
+            prompt += "- Include FAQ section with question-based long-tail keywords\n\n";
+            prompt += "🧠 **NLP & Semantic SEO:**\n";
+            prompt += "- Include topically related terms (TF-IDF relevant words)\n";
+            prompt += "- Use entity-based keywords (people, places, organizations, concepts)\n";
+            prompt += "- Answer 'People Also Ask' questions naturally in content\n";
+            prompt += "- Include co-occurrence keywords (words that commonly appear with your main keyword)\n";
+            prompt += "- Use semantic variations: synonyms, related terms, industry jargon\n";
+            prompt += "- Include location-specific entities and landmarks where relevant\n\n";
+            prompt += "🎯 **Content Quality Signals:**\n";
+            prompt += "- Include expertise indicators: years of experience, certifications, awards\n";
+            prompt += "- Add specific details: exact numbers, statistics, case studies\n";
+            prompt += "- Include process descriptions and 'how-to' elements\n";
+            prompt += "- Reference local information: area codes, zip codes, neighborhood names\n";
+            prompt += "- Add social proof: testimonials, reviews, client mentions\n";
+            prompt += "- Include contact information and business hours\n\n";
+            prompt += "🔗 **Internal Linking Strategy:**\n";
+            prompt += "- 2-5 internal links per 1000 words\n";
+            prompt += "- Use descriptive anchor text with target keywords\n";
+            prompt += "- Link to related services, location pages, and cornerstone content\n";
+            prompt += "- Include breadcrumb-style navigation cues\n";
+            prompt += "- Cross-link between city/location pages\n\n";
+            prompt += "📱 **Technical SEO Elements:**\n";
+            prompt += "- Include schema markup opportunities (LocalBusiness, Service, FAQ)\n";
+            prompt += "- Optimize for featured snippets: numbered lists, tables, definitions\n";
+            prompt += "- Include image alt text suggestions with keywords\n";
+            prompt += "- Add social media meta tags (Open Graph, Twitter Cards)\n";
+            prompt += "- Include canonical URL structure\n\n";
+            prompt += "🏆 **User Experience Optimization:**\n";
+            prompt += "- Front-load important information in first 100 words\n";
+            prompt += "- Include clear calls-to-action every 200-300 words\n";
+            prompt += "- Use action-oriented language and urgency triggers\n";
+            prompt += "- Add trust signals: guarantees, licenses, insurance mentions\n";
+            prompt += "- Include contact forms and phone numbers prominently\n\n";
+            prompt += "📍 **Local SEO Factors:**\n";
+            prompt += "- Include NAP (Name, Address, Phone) consistently\n";
+            prompt += "- Reference local landmarks, neighborhoods, and areas served\n";
+            prompt += "- Include 'near me' and location-based long-tail keywords\n";
+            prompt += "- Add local business categories and service area descriptions\n";
+            prompt += "- Include driving directions or service radius information\n\n";
+            prompt += "⚡ **Page Speed & Performance:**\n";
+            prompt += "- Optimize content length for fast loading\n";
+            prompt += "- Use efficient HTML structure\n";
+            prompt += "- Include lazy loading attributes for images\n";
+            prompt += "- Minimize excessive spintax that could slow processing\n\n";
+            prompt += "📈 **Conversion Optimization:**\n";
+            prompt += "- Include multiple contact methods (phone, form, email, chat)\n";
+            prompt += "- Add urgency and scarcity elements where appropriate\n";
+            prompt += "- Include benefit-focused headlines and subheadings\n";
+            prompt += "- Use power words and emotional triggers\n";
+            prompt += "- Add clear next steps and process explanations\n\n";
+            prompt += "�📢 IMPORTANT OUTPUT INSTRUCTIONS:\n";
+            prompt += "For every output section, place the content inside its own separate code block. For example:\n";
+            prompt += "- Place all 3 spun article versions inside one code block labeled 'Article Versions'\n";
+            prompt += "- Place all 3 meta titles inside their own code block labeled 'Meta Titles'\n";
+            prompt += "- Place all 3 meta descriptions inside their own code block labeled 'Meta Descriptions'\n";
+            prompt += "- Place all 3 meta keywords inside their own code block labeled 'Meta Keywords'\n";
+            prompt += "- Place schema markup suggestions inside their own code block labeled 'Schema Markup'\n";
+            prompt += "- Place FAQ section inside its own code block labeled 'FAQ Section'\n";
+            prompt += "- Place the internal link formula inside its own code block labeled 'Internal Link Formula'\n";
+            prompt += "- Place the URL slug formula inside its own code block labeled 'URL Slug Formula'\n\n";
+            prompt += "This will help the user easily copy each section independently.\n\n";
+            prompt += "✅ When complete:\n";
+            prompt += "- Output all content in proper Google Sheets-ready formula format using SPINTAX_NESTED\n";
+            prompt += "- Include internal links using the mapped keyword/city/state\n";
+            prompt += "- Provide the slug formula for dynamic URL generation\n";
+            prompt += "- Use **only** the cell references explicitly provided by the user\n";
+            prompt += "- Ensure all SEO optimization factors are naturally integrated throughout the content\n";
+            prompt += "- Include keyword density tracking and semantic keyword suggestions";
+            
+            // If no content was added, show the default prompt
+            if (!hasContent) {
+                return `SEO Content Generation Prompt
+
+(Start filling out the form fields above to see your custom SEO content prompt appear here...)
+
+This prompt will help you generate:
+• Website copy and landing pages
+• Blog posts and articles  
+• Meta descriptions and titles
+• Social media content
+• Ad copy and marketing materials
+
+All optimized for search engines and your target audience.`;
+            }
+            
+            return prompt;
+        }
+        
+        function copyLivePreview() {
+            const previewText = document.getElementById('livePreview').textContent;
+            navigator.clipboard.writeText(previewText).then(function() {
+                const btn = document.querySelector('.copy-preview-btn');
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                btn.classList.add('btn-success');
+                btn.classList.remove('copy-preview-btn');
+                
+                setTimeout(function() {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('copy-preview-btn');
+                }, 2000);
+            }).catch(function(err) {
+                alert('Failed to copy preview. Please select and copy manually.');
+            });
+        }
+
+        // Function to add basic punctuation to speech text
+        function addBasicPunctuation(text) {
+            if (!text) return text;
+            
+            // Trim and capitalize first letter
+            text = text.trim();
+            if (text.length > 0) {
+                text = text.charAt(0).toUpperCase() + text.slice(1);
+            }
+            
+            // Add commas for common speech patterns
+            text = text.replace(/\b(and|but|so|however|therefore|meanwhile|furthermore|moreover|additionally|also|plus|besides)\b/gi, ', $1');
+            text = text.replace(/\b(first|second|third|finally|lastly|next|then|after that|in addition|for example|such as)\b/gi, ', $1');
+            text = text.replace(/\b(yes|no|well|okay|alright|actually|basically|honestly|frankly|obviously|clearly)\b/gi, '$1,');
+            
+            // Add commas for lists (word and word and word -> word, word, and word)
+            text = text.replace(/(\w+)\s+and\s+(\w+)\s+and\s+(\w+)/g, '$1, $2, and $3');
+            text = text.replace(/(\w+)\s+or\s+(\w+)\s+or\s+(\w+)/g, '$1, $2, or $3');
+            
+            // Add question marks for obvious questions
+            text = text.replace(/^(what|how|when|where|why|who|which|can|could|would|should|is|are|do|does|did)\b.*(?![.!?])/gi, function(match) {
+                return match + '?';
+            });
+            
+            // Clean up double commas and spaces
+            text = text.replace(/,\s*,/g, ',');
+            text = text.replace(/\s+/g, ' ');
+            text = text.replace(/,\s*\./g, '.');
+            
+            // Add period at the end if no punctuation exists
+            if (text.length > 0 && !/[.!?]$/.test(text)) {
+                text += '.';
+            }
+            
+            // Capitalize after sentence endings
+            text = text.replace(/([.!?]\s+)([a-z])/g, function(match, p1, p2) {
+                return p1 + p2.toUpperCase();
+            });
+            
+            return text;
+        }
 
         // Quick speech function for individual questions
         let currentQuestionRecognition = null;
         let currentQuestionButton = null;
 
         function startQuestionSpeech(button) {
+            // If already recording with this button, stop it
+            if (currentQuestionRecognition && currentQuestionButton === button) {
+                currentQuestionRecognition.stop();
+                return;
+            }
+
             // Stop any existing recognition
             if (currentQuestionRecognition) {
                 currentQuestionRecognition.stop();
@@ -441,49 +997,85 @@
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 currentQuestionRecognition = new SpeechRecognition();
                 
-                currentQuestionRecognition.continuous = false;
-                currentQuestionRecognition.interimResults = false;
+                currentQuestionRecognition.continuous = true;
+                currentQuestionRecognition.interimResults = true;
                 currentQuestionRecognition.lang = 'en-US';
+                
+                let questionSpeechTimeout = null;
                 
                 currentQuestionRecognition.onstart = function() {
                     button.classList.remove('btn-outline-secondary');
                     button.classList.add('btn-danger');
                     button.innerHTML = '<i class="fas fa-stop"></i>';
-                    button.disabled = true;
+                    button.disabled = false; // Keep button enabled so it can be clicked to stop
                 };
                 
                 currentQuestionRecognition.onresult = function(event) {
-                    const transcript = event.results[0][0].transcript;
-                    
-                    // Add the speech to existing text
-                    if (textarea.value && !textarea.value.endsWith(' ') && !textarea.value.endsWith('.')) {
-                        textarea.value += ' ' + transcript;
-                    } else {
-                        textarea.value += transcript;
+                    // Clear existing timeout
+                    if (questionSpeechTimeout) {
+                        clearTimeout(questionSpeechTimeout);
                     }
                     
-                    // Auto-resize textarea
-                    textarea.style.height = 'auto';
-                    textarea.style.height = textarea.scrollHeight + 'px';
+                    let finalTranscript = '';
+                    let interimTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript + ' ';
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+                    
+                    // Only append final results to avoid duplicates
+                    if (finalTranscript) {
+                        const processedText = addBasicPunctuation(finalTranscript.trim());
+                        if (textarea.value && !textarea.value.endsWith(' ') && !textarea.value.endsWith('.')) {
+                            textarea.value += ' ' + processedText;
+                        } else {
+                            textarea.value += processedText;
+                        }
+                        
+                        // Auto-resize textarea
+                        textarea.style.height = 'auto';
+                        textarea.style.height = textarea.scrollHeight + 'px';
+                        
+                        // Update live preview
+                        updateLivePreview();
+                    }
+                    
+                    // Set 8-second timeout after last speech detected
+                    questionSpeechTimeout = setTimeout(() => {
+                        if (currentQuestionRecognition) {
+                            currentQuestionRecognition.stop();
+                        }
+                    }, 8000);
                 };
                 
                 currentQuestionRecognition.onerror = function(event) {
                     console.error('Speech recognition error:', event.error);
+                    if (questionSpeechTimeout) {
+                        clearTimeout(questionSpeechTimeout);
+                    }
                     resetQuestionSpeechButton();
                 };
                 
                 currentQuestionRecognition.onend = function() {
+                    if (questionSpeechTimeout) {
+                        clearTimeout(questionSpeechTimeout);
+                    }
                     resetQuestionSpeechButton();
                 };
                 
                 currentQuestionRecognition.start();
                 
-                // Auto-stop after 10 seconds
+                // Auto-stop after 30 seconds (increased from 10)
                 setTimeout(() => {
                     if (currentQuestionRecognition) {
                         currentQuestionRecognition.stop();
                     }
-                }, 10000);
+                }, 30000);
             } else {
                 alert('Speech recognition is not supported in your browser.');
             }
