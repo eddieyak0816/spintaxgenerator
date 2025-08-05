@@ -192,8 +192,16 @@
                 <i class="fas fa-exclamation-triangle me-2"></i>
                 <strong>Important:</strong> Only the cell references you define here will be used in the generated formulas. Do not leave this blank if you want dynamic content.
             </div>
-            
             <form method="post" id="cellMappingForm">
+                <div class="mb-3">
+                    <label class="form-label">Page Type</label>
+                    <select class="form-select" name="page_type" id="pageTypeSelect" onchange="updateLivePreview()">
+                        <option value="parent" {% if cell_mappings and cell_mappings.get('page_type') == 'parent' %}selected{% endif %}>Parent</option>
+                        <option value="sibling" {% if cell_mappings and cell_mappings.get('page_type') == 'sibling' %}selected{% endif %}>Sibling</option>
+                        <option value="last_sibling" {% if cell_mappings and cell_mappings.get('page_type') == 'last_sibling' %}selected{% endif %}>Last Sibling</option>
+                    </select>
+                    <div class="form-text">Select the type of page for internal linking logic.</div>
+                </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Primary Keyword Cell</label>
@@ -335,6 +343,7 @@ All optimized for search engines and your target audience.
                 </div>
             </div>
         </div>
+
         
         {% else %}
         <!-- Generated Prompt Output -->
@@ -379,6 +388,10 @@ All optimized for search engines and your target audience.
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+      // Inject answers as a JS variable for safe logic
+      var answersFromServer = {{ answers|tojson|safe }};
+    </script>
+    <script>
         function copyPrompt() {
             const promptText = document.getElementById('promptText').textContent;
             navigator.clipboard.writeText(promptText).then(function() {
@@ -397,29 +410,27 @@ All optimized for search engines and your target audience.
                 alert('Failed to copy prompt. Please select and copy manually.');
             });
         }
-
-        // Check if answers were provided (indicating AI auto-fill was used)
-        {% if answers %}
         document.addEventListener('DOMContentLoaded', function() {
-            // Add visual indicators that AI filled the form
-            const sections = document.querySelectorAll('.section');
-            sections.forEach(function(section) {
-                const title = section.querySelector('.section-title');
-                if (title && !title.textContent.includes('Auto-Fill') && !title.textContent.includes('Manual Entry')) {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge bg-success ms-2';
-                    badge.textContent = 'AI Filled';
-                    title.appendChild(badge);
-                }
-            });
+            if (answersFromServer && Object.keys(answersFromServer).length > 0) {
+                // Add visual indicators that AI filled the form
+                const sections = document.querySelectorAll('.section');
+                sections.forEach(function(section) {
+                    const title = section.querySelector('.section-title');
+                    if (title && !title.textContent.includes('Auto-Fill') && !title.textContent.includes('Manual Entry')) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-success ms-2';
+                        badge.textContent = 'AI Filled';
+                        title.appendChild(badge);
+                    }
+                });
 
-            // Scroll to the first question section
-            const firstQuestionSection = document.querySelector('.section h3.section-title');
-            if (firstQuestionSection && !firstQuestionSection.textContent.includes('Auto-Fill')) {
-                firstQuestionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Scroll to the first question section
+                const firstQuestionSection = document.querySelector('.section h3.section-title');
+                if (firstQuestionSection && !firstQuestionSection.textContent.includes('Auto-Fill')) {
+                    firstQuestionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             }
         });
-        {% endif %}
 
         // Auto-resize textareas
         document.addEventListener('DOMContentLoaded', function() {
@@ -631,272 +642,229 @@ All optimized for search engines and your target audience.
             document.getElementById('livePreview').textContent = prompt;
         }
         
-        function generatePreviewPrompt(answers) {
-            let prompt = "";
-            let hasContent = false;
-            
-            // Build SEO Content Generation Prompt
-            prompt += "You are an expert SEO content generator trained in using spintax formatting and producing outputs structured for Google Sheets formulas using:\n\n";
-            prompt += "=SPINTAX_NESTED(CONCATENATE( ... ))\n\n";
-            prompt += "🎯 Your task is to help generate programmatic SEO content templates using Google Sheets + spintax. These templates will be used to dynamically generate **hundreds of location-specific pages**.\n\n";
-            
-            // Get cell mappings from the form
-            const cellMappingForm = document.getElementById('cellMappingForm');
-            let cellMappings = "";
-            if (cellMappingForm) {
-                const formData = new FormData(cellMappingForm);
-                let mappingLines = [];
-                
-                if (formData.get('cell_primary_keyword')) {
-                    mappingLines.push(`${formData.get('cell_primary_keyword')} = Primary Keyword`);
-                }
-                if (formData.get('cell_business_name')) {
-                    mappingLines.push(`${formData.get('cell_business_name')} = Business Name`);
-                }
-                if (formData.get('cell_city')) {
-                    mappingLines.push(`${formData.get('cell_city')} = City`);
-                }
-                if (formData.get('cell_state')) {
-                    mappingLines.push(`${formData.get('cell_state')} = State`);
-                }
-                if (formData.get('cell_phone')) {
-                    mappingLines.push(`${formData.get('cell_phone')} = Phone Number`);
-                }
-                if (formData.get('cell_contact_url')) {
-                    mappingLines.push(`${formData.get('cell_contact_url')} = Contact URL`);
-                }
-                
-                const additional = formData.get('additional_cell_mappings');
-                if (additional && additional.trim()) {
-                    mappingLines.push(...additional.trim().split('\n').filter(line => line.trim()));
-                }
-                
-                if (mappingLines.length > 0) {
-                    cellMappings = mappingLines.join('\n');
-                    hasContent = true;
-                }
-            }
-            
-            if (cellMappings) {
-                prompt += "📍 **CELL MAPPINGS PROVIDED:**\n";
-                prompt += cellMappings + "\n\n";
-                prompt += "⚠️ Only use the exact cell mappings provided above.\n";
-                prompt += "🚫 Do not make assumptions or use any unmapped references.\n\n";
-            } else {
-                prompt += "📍 **PLEASE PROVIDE CELL MAPPINGS:**\n";
-                prompt += "Please provide the cell references for any data you want used in the content formulas.\n";
-                prompt += "For example:\n";
-                prompt += "A2 = City\n";
-                prompt += "B2 = State\n";
-                prompt += "C2 = Primary Keyword\n";
-                prompt += "D2 = Business Name\n\n";
-                prompt += "⚠️ Only use the exact cell mappings you provide.\n";
-                prompt += "🚫 Do not make assumptions or use any unmapped references.\n\n";
-            }
-            
-            // Add business context from form if provided
-            let businessContext = "";
-            if (answers.business_info_business_name) {
-                businessContext += `**Business Name:** ${answers.business_info_business_name}\n`;
-                hasContent = true;
-            }
-            if (answers.business_info_industry) {
-                businessContext += `**Industry:** ${answers.business_info_industry}\n`;
-                hasContent = true;
-            }
-            if (answers.business_info_location) {
-                businessContext += `**Location:** ${answers.business_info_location}\n`;
-                hasContent = true;
-            }
-            if (answers.business_info_target_audience) {
-                businessContext += `**Target Audience:** ${answers.business_info_target_audience}\n`;
-                hasContent = true;
-            }
-            if (answers.business_info_unique_selling_proposition) {
-                businessContext += `**Unique Selling Proposition:** ${answers.business_info_unique_selling_proposition}\n`;
-                hasContent = true;
-            }
-            
-            if (businessContext) {
-                prompt += "📋 **BUSINESS CONTEXT:**\n";
-                prompt += businessContext + "\n";
-            }
-            
-            // Add services/products context
-            if (answers.services_products_main_services) {
-                prompt += `**Services/Products:** ${answers.services_products_main_services}\n`;
-                hasContent = true;
-            }
-            if (answers.services_products_service_benefits) {
-                prompt += `**Key Benefits:** ${answers.services_products_service_benefits}\n`;
-                hasContent = true;
-            }
-            if (answers.services_products_service_area) {
-                prompt += `**Service Area:** ${answers.services_products_service_area}\n`;
-                hasContent = true;
-            }
-            if (answers.services_products_pricing_model) {
-                prompt += `**Pricing Model:** ${answers.services_products_pricing_model}\n`;
-                hasContent = true;
-            }
-            
-            // Add SEO requirements
-            let seoSection = "";
-            if (answers.seo_content_primary_keywords) {
-                seoSection += `**Primary Keywords:** ${answers.seo_content_primary_keywords}\n`;
-                hasContent = true;
-            }
-            if (answers.seo_content_secondary_keywords) {
-                seoSection += `**Secondary Keywords:** ${answers.seo_content_secondary_keywords}\n`;
-                hasContent = true;
-            }
-            if (answers.seo_content_content_tone) {
-                seoSection += `**Content Tone:** ${answers.seo_content_content_tone}\n`;
-                hasContent = true;
-            }
-            if (answers.seo_content_content_length) {
-                seoSection += `**Content Length:** ${answers.seo_content_content_length}\n`;
-                hasContent = true;
-            }
-            if (answers.seo_content_call_to_action) {
-                seoSection += `**Call to Action:** ${answers.seo_content_call_to_action}\n`;
-                hasContent = true;
-            }
-            if (seoSection) {
-                prompt += "\n📈 **SEO REQUIREMENTS:**\n";
-                prompt += seoSection;
-            }
-            
-            // Add competitive information
-            if (answers.competitors_main_competitors || answers.competitors_competitive_advantage) {
-                let compSection = "";
-                if (answers.competitors_main_competitors) {
-                    compSection += `**Main Competitors:** ${answers.competitors_main_competitors}\n`;
-                }
-                if (answers.competitors_competitive_advantage) {
-                    compSection += `**Competitive Advantages:** ${answers.competitors_competitive_advantage}\n`;
-                }
-                if (answers.competitors_market_position) {
-                    compSection += `**Market Position:** ${answers.competitors_market_position}\n`;
-                }
-                prompt += "\n🏆 **COMPETITIVE CONTEXT:**\n";
-                prompt += compSection;
-                hasContent = true;
-            }
-            
-            prompt += "\n✅ **GENERATE 3 VERSIONS OF EACH:**\n";
-            prompt += "- Fully spun article (800-1500 words after spinning)\n";
-            prompt += "- Meta Title\n";
-            prompt += "- Meta Description\n";
-            prompt += "- Meta Keywords\n";
-            prompt += "- FAQ Section\n";
-            prompt += "- Schema Markup suggestions\n\n";
-            
-            prompt += "🧾 **REQUIREMENTS:**\n";
-            prompt += "1. Use extensive spintax throughout all content (words, phrases, and sentences)\n";
-            prompt += "2. Use nested spintax wherever possible\n";
-            prompt += "3. Wrap everything in =SPINTAX_NESTED(CONCATENATE(...)) so it can be pasted into Google Sheets\n";
-            prompt += "4. Use HTML tags for structure (e.g., <h1>, <h2>, <ul>, <p>)\n";
-            prompt += "5. Only use the cell references provided above — do not insert your own\n\n";
-            
-            prompt += "📎 **INTERNAL LINK FORMAT:**\n";
-            prompt += "Include hyperlinks that build paths using:\n";
-            prompt += "- The keyword + location fields (if provided)\n";
-            prompt += "- Replace spaces with hyphens, all lowercase\n";
-            prompt += "- Skip blank fields cleanly\n\n";
-            
-            prompt += "🧷 **SAMPLE FORMULAS:**\n";
-            prompt += "Hyperlink: =IF(Keyword=\"\", \"\", \"<a href='/\" & LOWER(SUBSTITUTE(JOIN(\"-\", FILTER({Keyword,City,State}, {Keyword,City,State} <> \"\")), \" \", \"-\")) & \"'>\" & \"Service in \" & TEXTJOIN(\", \", TRUE, FILTER({City,State}, {City,State} <> \"\")) & \"</a>\")\n\n";
-            prompt += "Slug: =IF(Keyword=\"\", \"\", LOWER(SUBSTITUTE(JOIN(\"-\", FILTER({Keyword,City,State}, {Keyword,City,State} <> \"\")), \" \", \"-\")))\n\n";
-            
-            prompt += "🧩 **SPINTAX EXAMPLES:**\n";
-            prompt += "- Simple: `{granite|quartz|marble} counters`\n";
-            prompt += "- Nested: `{Upgrade|{Transform|Elevate}|{Beautify|Enhance}} your kitchen`\n\n";
-            
-            prompt += "� ON-PAGE SEO OPTIMIZATION REQUIREMENTS:\n\n";
-            prompt += "📊 **Keyword Optimization:**\n";
-            prompt += "- Primary keyword density: 0.5-2.5% (natural integration, avoid stuffing)\n";
-            prompt += "- Include primary keyword in: Title (beginning preferred), first 100 words, H1/H2 tags, meta description\n";
-            prompt += "- Use keyword variations and synonyms throughout (LSI keywords)\n";
-            prompt += "- Include location-based keyword combinations (e.g., '[service] in [city]', '[city] [service]')\n";
-            prompt += "- Distribute secondary keywords naturally (0.5-1% density each)\n\n";
-            prompt += "📏 **Content Structure & Length:**\n";
-            prompt += "- Target 800-2000 words for main content (after spintax spinning)\n";
-            prompt += "- Use proper heading hierarchy: H1 (main title), H2 (sections), H3 (subsections)\n";
-            prompt += "- Include 3-5 H2 headings with target keywords\n";
-            prompt += "- Create scannable content with bullet points, numbered lists, and short paragraphs (2-4 sentences)\n";
-            prompt += "- Include FAQ section with question-based long-tail keywords\n\n";
-            prompt += "🧠 **NLP & Semantic SEO:**\n";
-            prompt += "- Include topically related terms (TF-IDF relevant words)\n";
-            prompt += "- Use entity-based keywords (people, places, organizations, concepts)\n";
-            prompt += "- Answer 'People Also Ask' questions naturally in content\n";
-            prompt += "- Include co-occurrence keywords (words that commonly appear with your main keyword)\n";
-            prompt += "- Use semantic variations: synonyms, related terms, industry jargon\n";
-            prompt += "- Include location-specific entities and landmarks where relevant\n\n";
-            prompt += "🎯 **Content Quality Signals:**\n";
-            prompt += "- Include expertise indicators: years of experience, certifications, awards\n";
-            prompt += "- Add specific details: exact numbers, statistics, case studies\n";
-            prompt += "- Include process descriptions and 'how-to' elements\n";
-            prompt += "- Reference local information: area codes, zip codes, neighborhood names\n";
-            prompt += "- Add social proof: testimonials, reviews, client mentions\n";
-            prompt += "- Include contact information and business hours\n\n";
-            prompt += "🔗 **Internal Linking Strategy:**\n";
-            prompt += "- 2-5 internal links per 1000 words\n";
-            prompt += "- Use descriptive anchor text with target keywords\n";
-            prompt += "- Link to related services, location pages, and cornerstone content\n";
-            prompt += "- Include breadcrumb-style navigation cues\n";
-            prompt += "- Cross-link between city/location pages\n\n";
-            prompt += "📱 **Technical SEO Elements:**\n";
-            prompt += "- Include schema markup opportunities (LocalBusiness, Service, FAQ)\n";
-            prompt += "- Optimize for featured snippets: numbered lists, tables, definitions\n";
-            prompt += "- Include image alt text suggestions with keywords\n";
-            prompt += "- Add social media meta tags (Open Graph, Twitter Cards)\n";
-            prompt += "- Include canonical URL structure\n\n";
-            prompt += "🏆 **User Experience Optimization:**\n";
-            prompt += "- Front-load important information in first 100 words\n";
-            prompt += "- Include clear calls-to-action every 200-300 words\n";
-            prompt += "- Use action-oriented language and urgency triggers\n";
-            prompt += "- Add trust signals: guarantees, licenses, insurance mentions\n";
-            prompt += "- Include contact forms and phone numbers prominently\n\n";
-            prompt += "📍 **Local SEO Factors:**\n";
-            prompt += "- Include NAP (Name, Address, Phone) consistently\n";
-            prompt += "- Reference local landmarks, neighborhoods, and areas served\n";
-            prompt += "- Include 'near me' and location-based long-tail keywords\n";
-            prompt += "- Add local business categories and service area descriptions\n";
-            prompt += "- Include driving directions or service radius information\n\n";
-            prompt += "⚡ **Page Speed & Performance:**\n";
-            prompt += "- Optimize content length for fast loading\n";
-            prompt += "- Use efficient HTML structure\n";
-            prompt += "- Include lazy loading attributes for images\n";
-            prompt += "- Minimize excessive spintax that could slow processing\n\n";
-            prompt += "📈 **Conversion Optimization:**\n";
-            prompt += "- Include multiple contact methods (phone, form, email, chat)\n";
-            prompt += "- Add urgency and scarcity elements where appropriate\n";
-            prompt += "- Include benefit-focused headlines and subheadings\n";
-            prompt += "- Use power words and emotional triggers\n";
-            prompt += "- Add clear next steps and process explanations\n\n";
-            prompt += "�📢 IMPORTANT OUTPUT INSTRUCTIONS:\n";
-            prompt += "For every output section, place the content inside its own separate code block. For example:\n";
-            prompt += "- Place all 3 spun article versions inside one code block labeled 'Article Versions'\n";
-            prompt += "- Place all 3 meta titles inside their own code block labeled 'Meta Titles'\n";
-            prompt += "- Place all 3 meta descriptions inside their own code block labeled 'Meta Descriptions'\n";
-            prompt += "- Place all 3 meta keywords inside their own code block labeled 'Meta Keywords'\n";
-            prompt += "- Place schema markup suggestions inside their own code block labeled 'Schema Markup'\n";
-            prompt += "- Place FAQ section inside its own code block labeled 'FAQ Section'\n";
-            prompt += "- Place the internal link formula inside its own code block labeled 'Internal Link Formula'\n";
-            prompt += "- Place the URL slug formula inside its own code block labeled 'URL Slug Formula'\n\n";
-            prompt += "This will help the user easily copy each section independently.\n\n";
-            prompt += "✅ When complete:\n";
-            prompt += "- Output all content in proper Google Sheets-ready formula format using SPINTAX_NESTED\n";
-            prompt += "- Include internal links using the mapped keyword/city/state\n";
-            prompt += "- Provide the slug formula for dynamic URL generation\n";
-            prompt += "- Use **only** the cell references explicitly provided by the user\n";
-            prompt += "- Ensure all SEO optimization factors are naturally integrated throughout the content\n";
-            prompt += "- Include keyword density tracking and semantic keyword suggestions";
-            
-            // If no content was added, show the default prompt
-            if (!hasContent) {
-                return `SEO Content Generation Prompt
+function generatePreviewPrompt(answers) {
+    let prompt = "";
+    let hasContent = false;
+    let businessInfoSection = "";
+    let seoSection = "";
+    // Add business info from form fields
+    if (answers.business_info_name) {
+        businessInfoSection += `**Business Name:** ${answers.business_info_name}\n`;
+        hasContent = true;
+    }
+    if (answers.business_info_industry) {
+        businessInfoSection += `**Industry:** ${answers.business_info_industry}\n`;
+        hasContent = true;
+    }
+    if (answers.business_info_location) {
+        businessInfoSection += `**Location:** ${answers.business_info_location}\n`;
+        hasContent = true;
+    }
+    if (answers.business_info_target_audience) {
+        businessInfoSection += `**Target Audience:** ${answers.business_info_target_audience}\n`;
+        hasContent = true;
+    }
+    if (answers.business_info_unique_selling_proposition) {
+        businessInfoSection += `**Unique Selling Proposition:** ${answers.business_info_unique_selling_proposition}\n`;
+        hasContent = true;
+    }
+    if (businessInfoSection) {
+        prompt += "📋 **BUSINESS INFORMATION:**\n";
+        prompt += businessInfoSection + "\n";
+    }
+
+    // Add services/products context
+    if (answers.services_products_main_services) {
+        prompt += `**Services/Products:** ${answers.services_products_main_services}\n`;
+        hasContent = true;
+    }
+    if (answers.services_products_service_benefits) {
+        prompt += `**Key Benefits:** ${answers.services_products_service_benefits}\n`;
+        hasContent = true;
+    }
+    if (answers.services_products_service_area) {
+        prompt += `**Service Area:** ${answers.services_products_service_area}\n`;
+        hasContent = true;
+    }
+    if (answers.services_products_pricing_model) {
+        prompt += `**Pricing Model:** ${answers.services_products_pricing_model}\n`;
+        hasContent = true;
+    }
+
+    // Add SEO requirements
+    if (answers.seo_content_primary_keywords) {
+        seoSection += `**Primary Keywords:** ${answers.seo_content_primary_keywords}\n`;
+        hasContent = true;
+    }
+    if (answers.seo_content_secondary_keywords) {
+        seoSection += `**Secondary Keywords:** ${answers.seo_content_secondary_keywords}\n`;
+        hasContent = true;
+    }
+    if (answers.seo_content_content_tone) {
+        seoSection += `**Content Tone:** ${answers.seo_content_content_tone}\n`;
+        hasContent = true;
+    }
+    if (answers.seo_content_content_length) {
+        seoSection += `**Content Length:** ${answers.seo_content_content_length}\n`;
+        hasContent = true;
+    }
+    if (answers.seo_content_call_to_action) {
+        seoSection += `**Call to Action:** ${answers.seo_content_call_to_action}\n`;
+        hasContent = true;
+    }
+    if (seoSection) {
+        prompt += "\n📈 **SEO REQUIREMENTS:**\n";
+        prompt += seoSection;
+    }
+
+    // Add competitive information
+    if (answers.competitors_main_competitors || answers.competitors_competitive_advantage || answers.competitors_market_position) {
+        let compSection = "";
+        if (answers.competitors_main_competitors) {
+            compSection += `**Main Competitors:** ${answers.competitors_main_competitors}\n`;
+        }
+        if (answers.competitors_competitive_advantage) {
+            compSection += `**Competitive Advantages:** ${answers.competitors_competitive_advantage}\n`;
+        }
+        if (answers.competitors_market_position) {
+            compSection += `**Market Position:** ${answers.competitors_market_position}\n`;
+        }
+        prompt += "\n🏆 **COMPETITIVE CONTEXT:**\n";
+        prompt += compSection;
+        hasContent = true;
+    }
+
+    // Internal linking logic based on page type
+    let pageType = answers.page_type || "sibling";
+    if (pageType === "sibling") {
+        prompt += "🔗 **Internal Linking Logic:**\n";
+        prompt += "- This is a sibling page.\n";
+        prompt += "- Link to the parent page and other sibling pages.\n";
+        prompt += "- Do NOT link to the last sibling unless specified.\n";
+        prompt += "- Use anchor text with target keywords and location.\n";
+    } else if (pageType === "last_sibling") {
+        prompt += "🔗 **Internal Linking Logic:**\n";
+        prompt += "- This is the last sibling page.\n";
+        prompt += "- Link to the parent page and all sibling pages.\n";
+        prompt += "- Do NOT link to itself.\n";
+        prompt += "- Use anchor text with target keywords and location.\n";
+    }
+    prompt += "\n";
+
+    // ...rest of prompt-building logic (unchanged)...
+    prompt += "\n✅ **GENERATE 3 VERSIONS OF EACH:**\n";
+    prompt += "- Fully spun article (800-1500 words after spinning)\n";
+    prompt += "- Meta Title\n";
+    prompt += "- Meta Description\n";
+    prompt += "- Meta Keywords\n";
+    prompt += "- FAQ Section\n";
+    prompt += "- Schema Markup suggestions\n\n";
+
+    prompt += "🧾 **REQUIREMENTS:**\n";
+    prompt += "1. Use extensive spintax throughout all content (words, phrases, and sentences)\n";
+    prompt += "2. Use nested spintax wherever possible\n";
+    prompt += "3. Wrap everything in =SPINTAX_NESTED(CONCATENATE(...)) so it can be pasted into Google Sheets\n";
+    prompt += "4. Use HTML tags for structure (e.g., <h1>, <h2>, <ul>, <p>)\n";
+    prompt += "5. Only use the cell references provided above — do not insert your own\n\n";
+
+    prompt += "📎 **INTERNAL LINK FORMAT:**\n";
+    prompt += "Include hyperlinks that build paths using:\n";
+    prompt += "- The keyword + location fields (if provided)\n";
+    prompt += "- Replace spaces with hyphens, all lowercase\n";
+    prompt += "- Skip blank fields cleanly\n\n";
+
+    prompt += "🧷 **SAMPLE FORMULAS:**\n";
+    prompt += "Hyperlink: =IF(Keyword=\"\", \"\", \"<a href='/\" & LOWER(SUBSTITUTE(JOIN(\"-\", FILTER({Keyword,City,State}, {Keyword,City,State} <> \"\")), \" \", \"-\")) & \"'>\" & \"Service in \" & TEXTJOIN(\", \", TRUE, FILTER({City,State}, {City,State} <> \"\")) & \"</a>\")\n\n";
+    prompt += "Slug: =IF(Keyword=\"\", \"\", LOWER(SUBSTITUTE(JOIN(\"-\", FILTER({Keyword,City,State}, {Keyword,City,State} <> \"\")), \" \", \"-\")))\n\n";
+
+    prompt += "🧩 **SPINTAX EXAMPLES:**\n";
+    prompt += "- Simple: `{granite|quartz|marble} counters`\n";
+    prompt += "- Nested: `{Upgrade|{Transform|Elevate}|{Beautify|Enhance}} your kitchen`\n\n";
+
+    prompt += "� ON-PAGE SEO OPTIMIZATION REQUIREMENTS:\n\n";
+    prompt += "📊 **Keyword Optimization:**\n";
+    prompt += "- Primary keyword density: 0.5-2.5% (natural integration, avoid stuffing)\n";
+    prompt += "- Include primary keyword in: Title (beginning preferred), first 100 words, H1/H2 tags, meta description\n";
+    prompt += "- Use keyword variations and synonyms throughout (LSI keywords)\n";
+    prompt += "- Include location-based keyword combinations (e.g., '[service] in [city]', '[city] [service]')\n";
+    prompt += "- Distribute secondary keywords naturally (0.5-1% density each)\n\n";
+    prompt += "📏 **Content Structure & Length:**\n";
+    prompt += "- Target 800-2000 words for main content (after spintax spinning)\n";
+    prompt += "- Use proper heading hierarchy: H1 (main title), H2 (sections), H3 (subsections)\n";
+    prompt += "- Include 3-5 H2 headings with target keywords\n";
+    prompt += "- Create scannable content with bullet points, numbered lists, and short paragraphs (2-4 sentences)\n";
+    prompt += "- Include FAQ section with question-based long-tail keywords\n\n";
+    prompt += "🧠 **NLP & Semantic SEO:**\n";
+    prompt += "- Include topically related terms (TF-IDF relevant words)\n";
+    prompt += "- Use entity-based keywords (people, places, organizations, concepts)\n";
+    prompt += "- Answer 'People Also Ask' questions naturally in content\n";
+    prompt += "- Include co-occurrence keywords (words that commonly appear with your main keyword)\n";
+    prompt += "- Use semantic variations: synonyms, related terms, industry jargon\n";
+    prompt += "- Include location-specific entities and landmarks where relevant\n\n";
+    prompt += "🎯 **Content Quality Signals:**\n";
+    prompt += "- Include expertise indicators: years of experience, certifications, awards\n";
+    prompt += "- Add specific details: exact numbers, statistics, case studies\n";
+    prompt += "- Include process descriptions and 'how-to' elements\n";
+    prompt += "- Reference local information: area codes, zip codes, neighborhood names\n";
+    prompt += "- Add social proof: testimonials, reviews, client mentions\n";
+    prompt += "- Include contact information and business hours\n\n";
+    prompt += "🔗 **Internal Linking Strategy:**\n";
+    prompt += "- 2-5 internal links per 1000 words\n";
+    prompt += "- Use descriptive anchor text with target keywords\n";
+    prompt += "- Link to related services, location pages, and cornerstone content\n";
+    prompt += "- Include breadcrumb-style navigation cues\n";
+    prompt += "- Cross-link between city/location pages\n\n";
+    prompt += "📱 **Technical SEO Elements:**\n";
+    prompt += "- Include schema markup opportunities (LocalBusiness, Service, FAQ)\n";
+    prompt += "- Optimize for featured snippets: numbered lists, tables, definitions\n";
+    prompt += "- Include image alt text suggestions with keywords\n";
+    prompt += "- Add social media meta tags (Open Graph, Twitter Cards)\n";
+    prompt += "- Include canonical URL structure\n\n";
+    prompt += "🏆 **User Experience Optimization:**\n";
+    prompt += "- Front-load important information in first 100 words\n";
+    prompt += "- Include clear calls-to-action every 200-300 words\n";
+    prompt += "- Use action-oriented language and urgency triggers\n";
+    prompt += "- Add trust signals: guarantees, licenses, insurance mentions\n";
+    prompt += "- Include contact forms and phone numbers prominently\n\n";
+    prompt += "📍 **Local SEO Factors:**\n";
+    prompt += "- Include NAP (Name, Address, Phone) consistently\n";
+    prompt += "- Reference local landmarks, neighborhoods, and areas served\n";
+    prompt += "- Include 'near me' and location-based long-tail keywords\n";
+    prompt += "- Add local business categories and service area descriptions\n";
+    prompt += "- Include driving directions or service radius information\n\n";
+    prompt += "⚡ **Page Speed & Performance:**\n";
+    prompt += "- Optimize content length for fast loading\n";
+    prompt += "- Use efficient HTML structure\n";
+    prompt += "- Include lazy loading attributes for images\n";
+    prompt += "- Minimize excessive spintax that could slow processing\n\n";
+    prompt += "📈 **Conversion Optimization:**\n";
+    prompt += "- Include multiple contact methods (phone, form, email, chat)\n";
+    prompt += "- Add urgency and scarcity elements where appropriate\n";
+    prompt += "- Include benefit-focused headlines and subheadings\n";
+    prompt += "- Use power words and emotional triggers\n";
+    prompt += "- Add clear next steps and process explanations\n\n";
+    prompt += "� IMPORTANT OUTPUT INSTRUCTIONS:\n";
+    prompt += "For every output section, place the content inside its own separate code block. For example:\n";
+    prompt += "- Place all 3 spun article versions inside one code block labeled 'Article Versions'\n";
+    prompt += "- Place all 3 meta titles inside their own code block labeled 'Meta Titles'\n";
+    prompt += "- Place all 3 meta descriptions inside their own code block labeled 'Meta Descriptions'\n";
+    prompt += "- Place all 3 meta keywords inside their own code block labeled 'Meta Keywords'\n";
+    prompt += "- Place schema markup suggestions inside their own code block labeled 'Schema Markup'\n";
+    prompt += "- Place FAQ section inside its own code block labeled 'FAQ Section'\n";
+    prompt += "- Place the internal link formula inside its own code block labeled 'Internal Link Formula'\n";
+    prompt += "- Place the URL slug formula inside its own code block labeled 'URL Slug Formula'\n\n";
+    prompt += "This will help the user easily copy each section independently.\n\n";
+    prompt += "✅ When complete:\n";
+    prompt += "- Output all content in proper Google Sheets-ready formula format using SPINTAX_NESTED\n";
+    prompt += "- Include internal links using the mapped keyword/city/state\n";
+    prompt += "- Provide the slug formula for dynamic URL generation\n";
+    prompt += "- Use **only** the cell references explicitly provided by the user\n";
+    prompt += "- Ensure all SEO optimization factors are naturally integrated throughout the content\n";
+    prompt += "- Include keyword density tracking and semantic keyword suggestions";
+
+    // If no content was added, show the default prompt
+    if (!hasContent) {
+        return `SEO Content Generation Prompt
 
 (Start filling out the form fields above to see your custom SEO content prompt appear here...)
 
@@ -908,10 +876,10 @@ This prompt will help you generate:
 • Ad copy and marketing materials
 
 All optimized for search engines and your target audience.`;
-            }
-            
-            return prompt;
-        }
+    }
+
+    return prompt;
+}
         
         function copyLivePreview() {
             const previewText = document.getElementById('livePreview').textContent;
