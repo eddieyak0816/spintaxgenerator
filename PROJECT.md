@@ -1,3 +1,18 @@
+## Meta Prompt Instructions for Internal Linking
+
+Include in your meta prompt:
+
+"For each sibling or last sibling page, generate an internal link to the parent page using the following dynamic Google Sheets formula, which finds the first filled cell to the left and above the current cell:
+
+=LET(
+  parentRange, B$1:B4,
+  lastFilledRow, MAX(FILTER(ROW(parentRange), parentRange<>"")),
+  parentCell, INDEX(parentRange, lastFilledRow),
+  IF(parentCell="", "", "<a href='/" & LOWER(SUBSTITUTE(parentCell, " ", "-")) & "'>" & parentCell & "</a>")
+)
+"
+
+This ensures your generated content and formulas are always context-aware and dynamically linked according to your sheet's structure.
 # Spintax Template Generator Project
 
 ## Overview

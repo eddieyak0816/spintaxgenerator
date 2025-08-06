@@ -28,6 +28,19 @@ When you paste this formula into a Google Sheets cell, it generates a unique ver
 3. User chooses to use the default template or provides a custom spintax template.
 4. The script replaces variables with cell references and outputs a Google Sheets formula.
 5. User can save the formula to a file.
+6. Be sure to include dynamic parent link logic in your meta prompt instructions, so any AI or content generation process uses the correct formula for parent linking. For example, your meta prompt should specify:
+
+   "For each sibling or last sibling page, generate an internal link to the parent page using the following dynamic Google Sheets formula, which finds the first filled cell to the left and above the current cell:
+
+   =LET(
+     parentRange, B$1:B4,
+     lastFilledRow, MAX(FILTER(ROW(parentRange), parentRange<>"")),
+     parentCell, INDEX(parentRange, lastFilledRow),
+     IF(parentCell="", "", "<a href='/" & LOWER(SUBSTITUTE(parentCell, " ", "-")) & "'>" & parentCell & "</a>")
+   )
+   "
+
+   Be sure to include these details in your meta prompt so that any AI or content generation process will always use the correct dynamic formula for parent linking and internal linking logic. This ensures your generated content and formulas are always context-aware and dynamically linked according to your sheet's structure.
 
 ## Key Features
 - Spintax support for content variation.

@@ -30,7 +30,7 @@
         
         .live-preview {
             background: #f8f9fa;
-            color: #2c3e50;
+            color: #000;
             border: 1px solid #dee2e6;
             border-radius: 8px;
             padding: 1.5rem;
@@ -206,12 +206,13 @@
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Primary Keyword Cell</label>
                         <div class="input-group">
-                            <input type="text" class="form-control" name="cell_primary_keyword" 
-                                   placeholder="e.g., A2" 
-                                   value="{{ cell_mappings.get('primary_keyword', '') if cell_mappings is defined else '' }}"
+                            <input type="text" class="form-control" name="cell_reference" 
+                                   placeholder="e.g., C3" 
+                                   value="{{ cell_mappings.get('reference', '') if cell_mappings is defined else '' }}"
                                    oninput="updateLivePreview()">
-                            <span class="input-group-text">Primary Keyword</span>
+                            <span class="input-group-text">Content Reference Cell</span>
                         </div>
+                        <div class="form-text">Specify the cell for which this content is being generated (e.g., C3). This cell will be used to determine parent, sibling, and last sibling relationships for internal linking.</div>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Business Name Cell</label>
@@ -648,7 +649,13 @@ function generatePreviewPrompt(answers) {
     let businessInfoSection = "";
     let seoSection = "";
     // Add business info from form fields
-    if (answers.business_info_name) {
+    // Always show the business name from the correct textarea field
+    if (answers.business_info_business_name) {
+        businessInfoSection += `**Business Name:** ${answers.business_info_business_name}\n`;
+        hasContent = true;
+    }
+    // If the textarea is empty, fall back to the legacy field
+    else if (answers.business_info_name) {
         businessInfoSection += `**Business Name:** ${answers.business_info_name}\n`;
         hasContent = true;
     }
@@ -735,19 +742,55 @@ function generatePreviewPrompt(answers) {
     }
 
     // Internal linking logic based on page type
-    let pageType = answers.page_type || "sibling";
-    if (pageType === "sibling") {
-        prompt += "🔗 **Internal Linking Logic:**\n";
+    let pageType = answers.page_type || "parent";
+    prompt += "🔗 **Internal Linking Logic:**\n";
+    if (pageType === "parent") {
+        prompt += "- This is a parent page.\n";
+        prompt += "- Link only to the first sibling page (one cell to the right and one cell down from the parent, using dynamic references).\n";
+        prompt += "- Use the following Google Sheets formula to link to the first sibling page (one cell to the right and one cell down):\n";
+        prompt += "\n";
+        prompt += "    =IF(INDIRECT(ADDRESS(ROW()+1, COLUMN()+1))=\"\", \"\", \"<a href='/\" & LOWER(SUBSTITUTE(INDIRECT(ADDRESS(ROW()+1, COLUMN()+1)), \" \", \"-\")) & \"'>\" & INDIRECT(ADDRESS(ROW()+1, COLUMN()+1)) & \"</a>\")\n";
+        prompt += "  (This formula dynamically links to the first sibling page by referencing the cell one row down and one column to the right.)\n";
+        prompt += "- Include breadcrumb navigation by concatenating parent and first sibling cell values dynamically:\n";
+        prompt += "\n";
+        prompt += "    =A1 & \" > \" & INDIRECT(ADDRESS(ROW()+1, COLUMN()+1))\n";
+        prompt += "- Use anchor text with target keywords and location.\n";
+        prompt += "- The Content Reference Cell determines which sibling cell is linked from this parent page.\n";
+    } else if (pageType === "sibling") {
         prompt += "- This is a sibling page.\n";
-        prompt += "- Link to the parent page and other sibling pages.\n";
-        prompt += "- Do NOT link to the last sibling unless specified.\n";
+        prompt += "- Link to the page one cell below this sibling page (using dynamic references).\n";
+        prompt += "- Also link to the parent page (the cell one column to the left, and as many rows up as necessary until you find a cell with content).\n";
+        prompt += "- Use the following Google Sheets formulas to generate the links dynamically:\n";
+        prompt += "\n";
+        prompt += "    // Link to next sibling page\n";
+        prompt += "    =IF(INDIRECT(ADDRESS(ROW()+1, COLUMN()))=\"\",\"\",\"<a href='/\" & LOWER(SUBSTITUTE(INDIRECT(ADDRESS(ROW()+1, COLUMN())), \" \", \"-\")) & \"'>\" & INDIRECT(ADDRESS(ROW()+1, COLUMN())) & \"</a>\")\n";
+        prompt += "    // Link to parent page (dynamic lookup one column left, up to first non-empty cell above)\n";
+        prompt += "    =IFERROR(IF(INDEX(INDIRECT(CHAR(COLUMN()+64-1)&\"1:\"&CHAR(COLUMN()+64-1)&ROW()-1), MAX(FILTER(ROW(INDIRECT(\"1:\"&ROW()-1)), INDIRECT(CHAR(COLUMN()+64-1)&ROW(INDIRECT(\"1:\"&ROW()-1)))<>\"\")))=\"\",\"\",\"<a href='/\" & LOWER(SUBSTITUTE(INDEX(INDIRECT(CHAR(COLUMN()+64-1)&\"1:\"&CHAR(COLUMN()+64-1)&ROW()-1), MAX(FILTER(ROW(INDIRECT(\"1:\"&ROW()-1)), INDIRECT(CHAR(COLUMN()+64-1)&ROW(INDIRECT(\"1:\"&ROW()-1)))<>\"\"))), \" \", \"-\")) & \"'>\" & INDEX(INDIRECT(CHAR(COLUMN()+64-1)&\"1:\"&CHAR(COLUMN()+64-1)&ROW()-1), MAX(FILTER(ROW(INDIRECT(\"1:\"&ROW()-1)), INDIRECT(CHAR(COLUMN()+64-1)&ROW(INDIRECT(\"1:\"&ROW()-1)))<>\"\"))) & \"</a>\"),\"\")\n";
+        prompt += "  (This formula uses INDEX, FILTER, and MAX to find the closest non-empty cell above in the column to the left.)\n";
+        prompt += "- Include breadcrumb navigation by concatenating parent and sibling cell values dynamically:\n";
+        prompt += "\n";
+        prompt += "    =INDIRECT(ADDRESS(ROW()-1, COLUMN())) & \" > \" & INDIRECT(ADDRESS(ROW(),COLUMN()))\n";
         prompt += "- Use anchor text with target keywords and location.\n";
+        prompt += "- The Content Reference Cell determines which sibling cell is linked from this page.\n";
     } else if (pageType === "last_sibling") {
-        prompt += "🔗 **Internal Linking Logic:**\n";
         prompt += "- This is the last sibling page.\n";
-        prompt += "- Link to the parent page and all sibling pages.\n";
+        prompt += "- Link to the parent page using a dynamic reference (e.g., the cell above and to the left, or as mapped).\n";
+        prompt += "- Also link to the parent page (the cell one column to the left, and as many rows up as necessary until you find a cell with content).\n";
+        prompt += "- Use the following Google Sheets formulas to dynamically link to the parent page:\n";
+        prompt += "\n";
+        prompt += "    // Link to parent page (dynamic lookup one column left, up to first non-empty cell)\n";
+        prompt += "    =IFERROR(IF(INDEX(INDIRECT(CHAR(COLUMN()+64-1)&\"1:\"&CHAR(COLUMN()+64-1)&ROW()),MATCH(TRUE,INDEX(INDIRECT(CHAR(COLUMN()+64-1)&\"1:\"&CHAR(COLUMN()+64-1)&ROW())<>\"\",0),0))=\"\",\"\",\"<a href='/\" & LOWER(SUBSTITUTE(INDEX(INDIRECT(CHAR(COLUMN()+64-1)&\"1:\"&CHAR(COLUMN()+64-1)&ROW()),MATCH(TRUE,INDEX(INDIRECT(CHAR(COLUMN()+64-1)&\"1:\"&CHAR(COLUMN()+64-1)&ROW())<>\"\",0),0)), \" \", \"-\")) & \"'>\" & INDEX(INDIRECT(CHAR(COLUMN()+64-1)&\"1:\"&CHAR(COLUMN()+64-1)&ROW()),MATCH(TRUE,INDEX(INDIRECT(CHAR(COLUMN()+64-1)&\"1:\"&CHAR(COLUMN()+64-1)&ROW())<>\"\",0),0)) & \"</a>\"),\"\")\n";
+        prompt += "  (This formula uses INDEX and MATCH to find the first non-empty cell above in the column to the left.)\n";
+        prompt += "- Link to all sibling pages except itself using a dynamic array formula:\n";
+        prompt += "\n";
+        prompt += "    =ARRAYFORMULA(IF((siblingRange<>\"\")*(siblingRange<>INDIRECT(ADDRESS(ROW(),COLUMN()))),\"<a href='/\" & LOWER(SUBSTITUTE(siblingRange, \" \", \"-\")) & \"'>\" & siblingRange & \"</a>\",\"\"))\n";
+        prompt += "  (Replace siblingRange with the dynamic range of sibling cells; INDIRECT(ADDRESS(ROW(),COLUMN())) is the current cell.)\n";
         prompt += "- Do NOT link to itself.\n";
+        prompt += "- Include breadcrumb navigation by concatenating parent and sibling cell values dynamically:\n";
+        prompt += "\n";
+        prompt += "    =INDIRECT(ADDRESS(ROW()-1, COLUMN()-1)) & \" > \" & INDIRECT(ADDRESS(ROW(),COLUMN()))\n";
         prompt += "- Use anchor text with target keywords and location.\n";
+        prompt += "- The Content Reference Cell determines which parent and sibling cells are linked from this page.\n";
     }
     prompt += "\n";
 

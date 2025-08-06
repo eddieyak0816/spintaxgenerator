@@ -1,3 +1,17 @@
+## Meta Prompt Instructions for Internal Linking
+
+When generating content for sibling or last sibling pages, always include instructions in your meta prompt for dynamic parent linking. Specify that the AI/content generator should use the following Google Sheets formula to find the first filled cell to the left and above the current cell:
+
+```excel
+=LET(
+  parentRange, B$1:B4,
+  lastFilledRow, MAX(FILTER(ROW(parentRange), parentRange<>"")),
+  parentCell, INDEX(parentRange, lastFilledRow),
+  IF(parentCell="", "", "<a href='/" & LOWER(SUBSTITUTE(parentCell, " ", "-")) & "'>" & parentCell & "</a>")
+)
+```
+
+This ensures all generated content and formulas are context-aware and dynamically linked according to your sheet's structure.
 # Spintax Template Generator for Google Sheets
 
 ## Project Overview
