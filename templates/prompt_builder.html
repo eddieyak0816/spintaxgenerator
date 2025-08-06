@@ -851,31 +851,106 @@ function generatePreviewPrompt(answers) {
     prompt += "🔗 **Internal Linking Logic:**\n";
     if (pageType === "parent") {
         prompt += "- This is a parent page.\n";
-        prompt += "- Link to the child page using the following Google Sheets formula (one cell right and one cell down):\n";
-        prompt += "\n";
-        prompt += "    =IF(INDIRECT(ADDRESS(ROW()+1, COLUMN()+1))=\"\",\"\",\"<a href='/\" & LOWER(SUBSTITUTE(INDIRECT(ADDRESS(ROW()+1, COLUMN()+1)), \" \", \"-\")) & \"'>\" & INDIRECT(ADDRESS(ROW()+1, COLUMN()+1)) & \"</a>\")\n";
-        prompt += "  (This formula dynamically links to the child page by referencing the cell one row down and one column to the right.)\n";
-        prompt += "- Include breadcrumb navigation by concatenating parent and child cell values dynamically:\n";
-        prompt += "\n";
-        prompt += "    =INDIRECT(ADDRESS(ROW(), COLUMN())) & \" > \" & INDIRECT(ADDRESS(ROW()+1, COLUMN()+1))\n";
-        prompt += "- Use anchor text with target keywords and location.\n";
-        prompt += "- The Content Reference Cell determines which child cell is linked from this parent page.\n";
+        let cellRef = answers.cell_reference ? answers.cell_reference.trim() : null;
+        if (cellRef) {
+            // Use actual cell reference in formulas
+            // Assume child is one cell right and one cell down from cellRef
+            // Get column letter and row number
+            let match = cellRef.match(/^([A-Z]+)(\d+)$/i);
+            if (match) {
+                let col = match[1];
+                let row = parseInt(match[2]);
+                // Next column letter
+                let nextCol = String.fromCharCode(col.charCodeAt(0) + 1);
+                let nextRow = row + 1;
+                let childCell = nextCol + nextRow;
+                prompt += `- Link to the child page using the following Google Sheets formula (using your cell reference):\n\n`;
+                prompt += `    =IF(${childCell}="","","<a href='/" & LOWER(SUBSTITUTE(${childCell}, " ", "-")) & "'>" & ${childCell} & "</a>")\n`;
+                prompt += `  (This formula links to the child page at ${childCell}.)\n`;
+                prompt += `- Include breadcrumb navigation by concatenating parent and child cell values dynamically:\n\n`;
+                prompt += `    =${cellRef} & " > " & ${childCell}\n`;
+                prompt += `- Use anchor text with target keywords and location.\n`;
+                prompt += `- The Content Reference Cell determines which child cell is linked from this parent page.\n`;
+            } else {
+                // Fallback to dynamic formula if cellRef is not valid
+                prompt += "- Link to the child page using the following Google Sheets formula (one cell right and one cell down):\n";
+                prompt += "\n";
+                prompt += "    =IF(INDIRECT(ADDRESS(ROW()+1, COLUMN()+1))=\"\",\"\",\"<a href='/\" & LOWER(SUBSTITUTE(INDIRECT(ADDRESS(ROW()+1, COLUMN()+1)), \" \", \"-\")) & \"'>\" & INDIRECT(ADDRESS(ROW()+1, COLUMN()+1)) & \"</a>\")\n";
+                prompt += "  (This formula dynamically links to the child page by referencing the cell one row down and one column to the right.)\n";
+                prompt += "- Include breadcrumb navigation by concatenating parent and child cell values dynamically:\n";
+                prompt += "\n";
+                prompt += "    =INDIRECT(ADDRESS(ROW(), COLUMN())) & \" > \" & INDIRECT(ADDRESS(ROW()+1, COLUMN()+1))\n";
+                prompt += "- Use anchor text with target keywords and location.\n";
+                prompt += "- The Content Reference Cell determines which child cell is linked from this parent page.\n";
+            }
+        } else {
+            // No cell reference, use dynamic formula
+            prompt += "- Link to the child page using the following Google Sheets formula (one cell right and one cell down):\n";
+            prompt += "\n";
+            prompt += "    =IF(INDIRECT(ADDRESS(ROW()+1, COLUMN()+1))=\"\",\"\",\"<a href='/\" & LOWER(SUBSTITUTE(INDIRECT(ADDRESS(ROW()+1, COLUMN()+1)), \" \", \"-\")) & \"'>\" & INDIRECT(ADDRESS(ROW()+1, COLUMN()+1)) & \"</a>\")\n";
+            prompt += "  (This formula dynamically links to the child page by referencing the cell one row down and one column to the right.)\n";
+            prompt += "- Include breadcrumb navigation by concatenating parent and child cell values dynamically:\n";
+            prompt += "\n";
+            prompt += "    =INDIRECT(ADDRESS(ROW(), COLUMN())) & \" > \" & INDIRECT(ADDRESS(ROW()+1, COLUMN()+1))\n";
+            prompt += "- Use anchor text with target keywords and location.\n";
+            prompt += "- The Content Reference Cell determines which child cell is linked from this parent page.\n";
+        }
     } else if (pageType === "sibling") {
         prompt += "- This is a sibling page.\n";
-        prompt += "- Link to the page one cell below this sibling page (using dynamic references).\n";
-        prompt += "- Also link to the parent page (the cell one column to the left, and as many rows up as necessary until you find a cell with content).\n";
-        prompt += "- Use the following Google Sheets formulas to generate the links dynamically:\n";
-        prompt += "\n";
-        prompt += "    // Link to next sibling page\n";
-        prompt += "    =IF(INDIRECT(ADDRESS(ROW()+1, COLUMN()))=\"\",\"\",\"<a href='/\" & LOWER(SUBSTITUTE(INDIRECT(ADDRESS(ROW()+1, COLUMN())), \" \", \"-\")) & \"'>\" & INDIRECT(ADDRESS(ROW()+1, COLUMN())) & \"</a>\")\n";
-        prompt += "    // Link to parent page (dynamic lookup one column left, up to first non-empty cell above)\n";
-        prompt += "    =IFERROR(\n  LET(\n    colNum, COLUMN() - 1,\n    rowNum, ROW(),\n    colLetter, REGEXEXTRACT(ADDRESS(1, colNum, 4), \"[A-Z]+\"),\n    searchRange, INDIRECT(colLetter & \"1:\" & colLetter & (rowNum - 1)),\n    lastRow, MAX(FILTER(ROW(searchRange), searchRange <> \"\")),\n    value, INDEX(searchRange, lastRow),\n    IF(value = \"\", \"\", \"<a href='/\" & LOWER(SUBSTITUTE(value, \" \", \"-\")) & \"'>\" & value & \"</a>\")\n  ),\n  \"\"\n)\n";
-        prompt += "  (This formula dynamically links to the parent page by referencing the closest non-empty cell above in the column to the left.)\n";
-        prompt += "- Include breadcrumb navigation by concatenating parent and sibling cell values dynamically:\n";
-        prompt += "\n";
-        prompt += "    =INDIRECT(ADDRESS(ROW()-1, COLUMN())) & \" > \" & INDIRECT(ADDRESS(ROW(),COLUMN()))\n";
-        prompt += "- Use anchor text with target keywords and location.\n";
-        prompt += "- The Content Reference Cell determines which sibling cell is linked from this page.\n";
+        let cellRef = answers.cell_reference ? answers.cell_reference.trim() : null;
+        if (cellRef) {
+            // Use actual cell reference in formulas
+            let match = cellRef.match(/^([A-Z]+)(\d+)$/i);
+            if (match) {
+                let col = match[1];
+                let row = parseInt(match[2]);
+                // Next sibling: same column, next row
+                let siblingCell = col + (row + 1);
+                // Parent: previous column, previous row
+                let prevCol = String.fromCharCode(col.charCodeAt(0) - 1);
+                let parentCell = prevCol + (row - 1);
+                prompt += `- Link to the next sibling page using the following Google Sheets formula (using your cell reference):\n\n`;
+                prompt += `    =IF(${siblingCell}="","","<a href='/" & LOWER(SUBSTITUTE(${siblingCell}, " ", "-")) & "'>" & ${siblingCell} & "</a>")\n`;
+                prompt += `- Link to the parent page using the following formula (using your cell reference):\n\n`;
+                prompt += `    =IF(${parentCell}="","","<a href='/" & LOWER(SUBSTITUTE(${parentCell}, " ", "-")) & "'>" & ${parentCell} & "</a>")\n`;
+                prompt += `- Include breadcrumb navigation by concatenating parent and sibling cell values dynamically:\n\n`;
+                prompt += `    =${parentCell} & " > " & ${cellRef}\n`;
+                prompt += `- Use anchor text with target keywords and location.\n`;
+                prompt += `- The Content Reference Cell determines which sibling cell is linked from this page.\n`;
+            } else {
+                // Fallback to dynamic formula if cellRef is not valid
+                prompt += "- Link to the page one cell below this sibling page (using dynamic references).\n";
+                prompt += "- Also link to the parent page (the cell one column to the left, and as many rows up as necessary until you find a cell with content).\n";
+                prompt += "- Use the following Google Sheets formulas to generate the links dynamically:\n";
+                prompt += "\n";
+                prompt += "    // Link to next sibling page\n";
+                prompt += "    =IF(INDIRECT(ADDRESS(ROW()+1, COLUMN()))=\"\",\"\",\"<a href='/\" & LOWER(SUBSTITUTE(INDIRECT(ADDRESS(ROW()+1, COLUMN())), \" \", \"-\")) & \"'>\" & INDIRECT(ADDRESS(ROW()+1, COLUMN())) & \"</a>\")\n";
+                prompt += "    // Link to parent page (dynamic lookup one column left, up to first non-empty cell above)\n";
+                prompt += "    =IFERROR(\n  LET(\n    colNum, COLUMN() - 1,\n    rowNum, ROW(),\n    colLetter, REGEXEXTRACT(ADDRESS(1, colNum, 4), \"[A-Z]+\"),\n    searchRange, INDIRECT(colLetter & \"1:\" & colLetter & (rowNum - 1)),\n    lastRow, MAX(FILTER(ROW(searchRange), searchRange <> \"\")),\n    value, INDEX(searchRange, lastRow),\n    IF(value = \"\", \"\", \"<a href='/\" & LOWER(SUBSTITUTE(value, \" \", \"-\")) & \"'>\" & value & \"</a>\")\n  ),\n  \"\"\n)\n";
+                prompt += "  (This formula dynamically links to the parent page by referencing the closest non-empty cell above in the column to the left.)\n";
+                prompt += "- Include breadcrumb navigation by concatenating parent and sibling cell values dynamically:\n";
+                prompt += "\n";
+                prompt += "    =INDIRECT(ADDRESS(ROW()-1, COLUMN())) & \" > \" & INDIRECT(ADDRESS(ROW(),COLUMN()))\n";
+                prompt += "- Use anchor text with target keywords and location.\n";
+                prompt += "- The Content Reference Cell determines which sibling cell is linked from this page.\n";
+            }
+        } else {
+            // No cell reference, use dynamic formula
+            prompt += "- Link to the page one cell below this sibling page (using dynamic references).\n";
+            prompt += "- Also link to the parent page (the cell one column to the left, and as many rows up as necessary until you find a cell with content).\n";
+            prompt += "- Use the following Google Sheets formulas to generate the links dynamically:\n";
+            prompt += "\n";
+            prompt += "    // Link to next sibling page\n";
+            prompt += "    =IF(INDIRECT(ADDRESS(ROW()+1, COLUMN()))=\"\",\"\",\"<a href='/\" & LOWER(SUBSTITUTE(INDIRECT(ADDRESS(ROW()+1, COLUMN())), \" \", \"-\")) & \"'>\" & INDIRECT(ADDRESS(ROW()+1, COLUMN())) & \"</a>\")\n";
+            prompt += "    // Link to parent page (dynamic lookup one column left, up to first non-empty cell above)\n";
+            prompt += "    =IFERROR(\n  LET(\n    colNum, COLUMN() - 1,\n    rowNum, ROW(),\n    colLetter, REGEXEXTRACT(ADDRESS(1, colNum, 4), \"[A-Z]+\"),\n    searchRange, INDIRECT(colLetter & \"1:\" & colLetter & (rowNum - 1)),\n    lastRow, MAX(FILTER(ROW(searchRange), searchRange <> \"\")),\n    value, INDEX(searchRange, lastRow),\n    IF(value = \"\", \"\", \"<a href='/\" & LOWER(SUBSTITUTE(value, \" \", \"-\")) & \"'>\" & value & \"</a>\")\n  ),\n  \"\"\n)\n";
+            prompt += "  (This formula dynamically links to the parent page by referencing the closest non-empty cell above in the column to the left.)\n";
+            prompt += "- Include breadcrumb navigation by concatenating parent and sibling cell values dynamically:\n";
+            prompt += "\n";
+            prompt += "    =INDIRECT(ADDRESS(ROW()-1, COLUMN())) & \" > \" & INDIRECT(ADDRESS(ROW(),COLUMN()))\n";
+            prompt += "- Use anchor text with target keywords and location.\n";
+            prompt += "- The Content Reference Cell determines which sibling cell is linked from this page.\n";
+        }
     } else if (pageType === "last_sibling") {
         prompt += "- This is the last sibling page.\n";
         prompt += "- Link to the parent page using a dynamic reference (e.g., the cell above and to the left, or as mapped).\n";
