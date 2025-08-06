@@ -148,6 +148,30 @@
           {% endif %}
         {% endwith %}
 
+        <!-- Project Management Section -->
+        <div class="section mb-4" id="projectManagerSection">
+            <h3 class="section-title">📁 Project Management</h3>
+            <div class="row align-items-end">
+                <div class="col-md-4 mb-2">
+                    <label class="form-label">Project Name</label>
+                    <input type="text" class="form-control" id="projectNameInput" placeholder="Enter project name...">
+                </div>
+                <div class="col-md-4 mb-2">
+                    <label class="form-label">Load Saved Project</label>
+                    <select class="form-select" id="projectSelect">
+                        <option value="">-- Select Project --</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-2 d-flex gap-2">
+                    <button type="button" class="btn accent-btn" id="saveProjectBtn">Save as New</button>
+                    <button type="button" class="btn btn-secondary" id="overwriteProjectBtn">Overwrite</button>
+                    <button type="button" class="btn btn-info" id="loadProjectBtn">Load</button>
+                    <button type="button" class="btn btn-danger" id="deleteProjectBtn">Delete</button>
+                </div>
+            </div>
+            <div id="projectStatus" class="form-text text-success mt-2" style="display:none;"></div>
+        </div>
+
         {% if not updated_prompt %}
         
         <!-- AI Auto-Fill Section -->
@@ -393,24 +417,105 @@ All optimized for search engines and your target audience.
       var answersFromServer = {{ answers|tojson|safe }};
     </script>
     <script>
-        function copyPrompt() {
-            const promptText = document.getElementById('promptText').textContent;
-            navigator.clipboard.writeText(promptText).then(function() {
-                const btn = document.querySelector('.copy-btn');
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                btn.classList.remove('btn-outline-secondary');
-                btn.classList.add('btn-success');
-                
-                setTimeout(function() {
-                    btn.textContent = originalText;
-                    btn.classList.remove('btn-success');
-                    btn.classList.add('btn-outline-secondary');
-                }, 2000);
-            }).catch(function(err) {
-                alert('Failed to copy prompt. Please select and copy manually.');
+        // Project Management Logic
+        const PROJECTS_KEY = 'seoPromptProjects';
+        function getProjects() {
+            let projects = localStorage.getItem(PROJECTS_KEY);
+            return projects ? JSON.parse(projects) : {};
+        }
+        function saveProject(name, data) {
+            let projects = getProjects();
+            projects[name] = data;
+            localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+        }
+        function deleteProject(name) {
+            let projects = getProjects();
+            delete projects[name];
+            localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+        }
+        function updateProjectDropdown() {
+            const select = document.getElementById('projectSelect');
+            const projects = getProjects();
+            select.innerHTML = '<option value="">-- Select Project --</option>';
+            Object.keys(projects).forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                select.appendChild(opt);
             });
         }
+        function showProjectStatus(msg, success=true) {
+            const status = document.getElementById('projectStatus');
+            status.textContent = msg;
+            status.className = success ? 'form-text text-success mt-2' : 'form-text text-danger mt-2';
+            status.style.display = 'block';
+            setTimeout(() => { status.style.display = 'none'; }, 2500);
+        }
+        function getCurrentFormData() {
+            // Collect all form data from both forms
+            const formData = new FormData(document.getElementById('promptForm'));
+            const cellFormData = new FormData(document.getElementById('cellMappingForm'));
+            const answers = {};
+            for (let [key, value] of formData.entries()) {
+                if (value.trim()) answers[key] = value.trim();
+            }
+            for (let [key, value] of cellFormData.entries()) {
+                if (value.trim()) answers[key] = value.trim();
+            }
+            return answers;
+        }
+        function setFormData(data) {
+            // Set form fields from data object
+            for (const [key, value] of Object.entries(data)) {
+                let el = document.querySelector(`[name='${key}']`);
+                if (el) el.value = value;
+            }
+            updateLivePreview();
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            updateProjectDropdown();
+            document.getElementById('saveProjectBtn').onclick = function() {
+                const name = document.getElementById('projectNameInput').value.trim();
+                if (!name) return showProjectStatus('Enter a project name.', false);
+                const projects = getProjects();
+                if (projects[name]) return showProjectStatus('Project name already exists. Use Overwrite or a new name.', false);
+                saveProject(name, getCurrentFormData());
+                updateProjectDropdown();
+                showProjectStatus('Project saved!');
+            };
+            document.getElementById('overwriteProjectBtn').onclick = function() {
+                const name = document.getElementById('projectNameInput').value.trim();
+                if (!name) return showProjectStatus('Enter a project name.', false);
+                saveProject(name, getCurrentFormData());
+                updateProjectDropdown();
+                showProjectStatus('Project overwritten!');
+            };
+            document.getElementById('loadProjectBtn').onclick = function() {
+                const select = document.getElementById('projectSelect');
+                const name = select.value;
+                if (!name) return showProjectStatus('Select a project to load.', false);
+                const projects = getProjects();
+                if (!projects[name]) return showProjectStatus('Project not found.', false);
+                setFormData(projects[name]);
+                document.getElementById('projectNameInput').value = name;
+                showProjectStatus('Project loaded!');
+            };
+            document.getElementById('deleteProjectBtn').onclick = function() {
+                const select = document.getElementById('projectSelect');
+                const name = select.value;
+                if (!name) return showProjectStatus('Select a project to delete.', false);
+                if (!confirm(`Delete project "${name}"? This cannot be undone.`)) return;
+                deleteProject(name);
+                updateProjectDropdown();
+                showProjectStatus('Project deleted!');
+                document.getElementById('projectNameInput').value = '';
+            };
+            document.getElementById('projectSelect').onchange = function() {
+                const name = this.value;
+                document.getElementById('projectNameInput').value = name;
+            };
+        });
+        // ...existing code...
         document.addEventListener('DOMContentLoaded', function() {
             if (answersFromServer && Object.keys(answersFromServer).length > 0) {
                 // Add visual indicators that AI filled the form
